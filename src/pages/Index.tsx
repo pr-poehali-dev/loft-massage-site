@@ -75,9 +75,9 @@ export default function Index() {
       </nav>
 
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-industrial/10" />
+        <div className="absolute inset-0 bg-gradient-to-br from-background/30 via-background/50 to-industrial/20" />
         <div 
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-60"
           style={{
             backgroundImage: 'url(https://cdn.poehali.dev/files/e1832efa-4a2d-41cb-b464-51b3e1d6974b.jpeg)',
             backgroundSize: 'cover',
@@ -85,10 +85,10 @@ export default function Index() {
           }}
         />
         <div className="container mx-auto px-4 relative z-10 text-center animate-fade-in">
-          <h2 className="text-6xl md:text-8xl font-bold mb-6 text-industrial uppercase tracking-tight">
+          <h2 className="text-6xl md:text-8xl font-bold mb-6 text-white drop-shadow-lg uppercase tracking-tight">
             Массаж<br/>Лофт
           </h2>
-          <p className="text-xl md:text-2xl text-foreground/80 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl md:text-2xl text-white/90 drop-shadow-md mb-8 max-w-2xl mx-auto">
             Профессиональный массаж в атмосфере индустриального комфорта
           </p>
           <Button 
@@ -103,9 +103,10 @@ export default function Index() {
 
       <section id="services" className="py-20 bg-terrace/5">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Услуги</h2>
-          <p className="text-center text-foreground/70 mb-12 text-lg">Индивидуальный подход к каждому клиенту</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="border-4 border-industrial/30 rounded-2xl p-8 md:p-12">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Услуги</h2>
+            <p className="text-center text-foreground/70 mb-12 text-lg">Индивидуальный подход к каждому клиенту</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {services.map((service, index) => (
               <Card 
                 key={index} 
@@ -121,15 +122,17 @@ export default function Index() {
                 </CardHeader>
               </Card>
             ))}
+            </div>
           </div>
         </div>
       </section>
 
       <section id="prices" className="py-20">
         <div className="container mx-auto px-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Прайс</h2>
-          <p className="text-center text-foreground/70 mb-12 text-lg">Прозрачные цены без скрытых платежей</p>
-          <div className="max-w-3xl mx-auto">
+          <div className="border-4 border-industrial/30 rounded-2xl p-8 md:p-12">
+            <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Прайс</h2>
+            <p className="text-center text-foreground/70 mb-12 text-lg">Прозрачные цены без скрытых платежей</p>
+            <div className="max-w-3xl mx-auto">
             <Accordion type="single" collapsible className="space-y-4">
               {services.map((service, index) => (
                 <AccordionItem 
@@ -163,6 +166,7 @@ export default function Index() {
                 </AccordionItem>
               ))}
             </Accordion>
+            </div>
           </div>
         </div>
       </section>
