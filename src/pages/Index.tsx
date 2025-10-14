@@ -1,14 +1,287 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import Icon from '@/components/ui/icon'
 
-const Index = () => {
+export default function Index() {
+  const [bookingUrl] = useState('#')
+
+  const services = [
+    {
+      title: 'Классический массаж',
+      description: 'Традиционная техника для общего расслабления и улучшения кровообращения',
+      icon: 'Hand',
+      prices: [
+        { duration: '60 минут', price: '3500₽' },
+        { duration: '90 минут', price: '4800₽' }
+      ]
+    },
+    {
+      title: 'Deep Tissue',
+      description: 'Глубокая проработка мышц для снятия хронических напряжений',
+      icon: 'Dumbbell',
+      prices: [
+        { duration: '60 минут', price: '4000₽' },
+        { duration: '90 минут', price: '5500₽' }
+      ]
+    },
+    {
+      title: 'Спортивный массаж',
+      description: 'Восстановление после тренировок и профилактика травм',
+      icon: 'Flame',
+      prices: [
+        { duration: '60 минут', price: '4200₽' },
+        { duration: '90 минут', price: '5800₽' }
+      ]
+    },
+    {
+      title: 'Антистресс',
+      description: 'Расслабляющая техника для снятия эмоционального напряжения',
+      icon: 'Sparkles',
+      prices: [
+        { duration: '60 минут', price: '3800₽' },
+        { duration: '90 минут', price: '5200₽' }
+      ]
+    }
+  ]
+
+  const gallery = [
+    'https://cdn.poehali.dev/files/e1832efa-4a2d-41cb-b464-51b3e1d6974b.jpeg',
+    'https://cdn.poehali.dev/files/ca89434b-6670-4b10-9942-f9b1f36a7f7a.jpeg',
+    'https://cdn.poehali.dev/files/73991933-3d6d-476a-be3e-da7f0c43bc38.jpeg',
+    'https://cdn.poehali.dev/files/66350afb-c5f2-4d92-b705-7bdc846b7714.jpeg',
+    'https://cdn.poehali.dev/files/bfabeb17-fe5a-4a57-8306-df33558f9ec1.jpeg'
+  ]
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
-      </div>
-    </div>
-  );
-};
+    <div className="min-h-screen bg-background">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-industrial uppercase tracking-wider">Массаж Булат</h1>
+            <div className="hidden md:flex items-center gap-6">
+              <a href="#services" className="text-foreground/80 hover:text-foreground transition-colors">Услуги</a>
+              <a href="#prices" className="text-foreground/80 hover:text-foreground transition-colors">Прайс</a>
+              <a href="#gallery" className="text-foreground/80 hover:text-foreground transition-colors">Галерея</a>
+              <a href="#about" className="text-foreground/80 hover:text-foreground transition-colors">О мастере</a>
+              <a href="#contacts" className="text-foreground/80 hover:text-foreground transition-colors">Контакты</a>
+            </div>
+            <Button className="bg-industrial hover:bg-industrial/90 text-white" onClick={() => window.location.href = bookingUrl}>
+              Записаться
+            </Button>
+          </div>
+        </div>
+      </nav>
 
-export default Index;
+      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-industrial/10" />
+        <div 
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: 'url(https://cdn.poehali.dev/files/e1832efa-4a2d-41cb-b464-51b3e1d6974b.jpeg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+        />
+        <div className="container mx-auto px-4 relative z-10 text-center animate-fade-in">
+          <h2 className="text-6xl md:text-8xl font-bold mb-6 text-industrial uppercase tracking-tight">
+            Массаж<br/>Лофт
+          </h2>
+          <p className="text-xl md:text-2xl text-foreground/80 mb-8 max-w-2xl mx-auto">
+            Профессиональный массаж в атмосфере индустриального комфорта
+          </p>
+          <Button 
+            size="lg" 
+            className="bg-industrial hover:bg-industrial/90 text-white text-lg px-8 py-6"
+            onClick={() => window.location.href = bookingUrl}
+          >
+            Записаться на сеанс
+          </Button>
+        </div>
+      </section>
+
+      <section id="services" className="py-20 bg-terrace/5">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Услуги</h2>
+          <p className="text-center text-foreground/70 mb-12 text-lg">Индивидуальный подход к каждому клиенту</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {services.map((service, index) => (
+              <Card 
+                key={index} 
+                className="border-2 border-industrial/20 hover:border-industrial/40 transition-all hover:shadow-lg animate-fade-in hover-scale"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardHeader>
+                  <div className="w-12 h-12 bg-industrial/10 rounded-lg flex items-center justify-center mb-4">
+                    <Icon name={service.icon} className="text-industrial" size={24} />
+                  </div>
+                  <CardTitle className="text-xl">{service.title}</CardTitle>
+                  <CardDescription>{service.description}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="prices" className="py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Прайс</h2>
+          <p className="text-center text-foreground/70 mb-12 text-lg">Прозрачные цены без скрытых платежей</p>
+          <div className="max-w-3xl mx-auto">
+            <Accordion type="single" collapsible className="space-y-4">
+              {services.map((service, index) => (
+                <AccordionItem 
+                  key={index} 
+                  value={`item-${index}`}
+                  className="border-2 border-industrial/20 rounded-lg px-6 animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+                    <div className="flex items-center gap-3">
+                      <Icon name={service.icon} className="text-industrial" size={20} />
+                      {service.title}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3 pt-4">
+                      {service.prices.map((price, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-2 border-b border-border last:border-0">
+                          <span className="text-foreground/80">{price.duration}</span>
+                          <span className="text-xl font-bold text-industrial">{price.price}</span>
+                        </div>
+                      ))}
+                      <Button 
+                        className="w-full mt-4 bg-industrial hover:bg-industrial/90 text-white"
+                        onClick={() => window.location.href = bookingUrl}
+                      >
+                        Записаться
+                      </Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </div>
+        </div>
+      </section>
+
+      <section id="gallery" className="py-20 bg-terrace/5">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Галерея</h2>
+          <p className="text-center text-foreground/70 mb-12 text-lg">Атмосфера наших массажных комнат</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {gallery.map((image, index) => (
+              <div 
+                key={index} 
+                className="relative aspect-square overflow-hidden rounded-lg animate-fade-in hover-scale"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <img 
+                  src={image} 
+                  alt={`Галерея ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="about" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              <div className="animate-fade-in">
+                <img 
+                  src="https://cdn.poehali.dev/files/bfabeb17-fe5a-4a57-8306-df33558f9ec1.jpeg"
+                  alt="Мастер Булат"
+                  className="rounded-lg shadow-2xl"
+                />
+              </div>
+              <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
+                <h2 className="text-4xl md:text-5xl font-bold mb-6 uppercase">О мастере</h2>
+                <h3 className="text-2xl font-semibold text-industrial mb-4">Булат</h3>
+                <p className="text-foreground/80 text-lg leading-relaxed mb-4">
+                  Сертифицированный массажист с опытом работы более 8 лет. Специализируюсь на классических и современных техниках массажа.
+                </p>
+                <p className="text-foreground/80 text-lg leading-relaxed mb-6">
+                  Моя философия — индивидуальный подход к каждому клиенту. Я создаю атмосферу комфорта и релаксации в уникальном лофт-пространстве.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
+                    <Icon name="Award" size={20} className="text-industrial" />
+                    <span>8+ лет опыта</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
+                    <Icon name="Users" size={20} className="text-industrial" />
+                    <span>500+ клиентов</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
+                    <Icon name="Star" size={20} className="text-industrial" />
+                    <span>Сертификаты</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="contacts" className="py-20 bg-terrace/5">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 uppercase">Контакты</h2>
+          <p className="text-center text-foreground/70 mb-12 text-lg">Свяжитесь со мной удобным способом</p>
+          <div className="max-w-2xl mx-auto">
+            <Card className="border-2 border-industrial/20">
+              <CardContent className="p-8 space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-industrial/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon name="MapPin" className="text-industrial" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">Адрес</h3>
+                    <p className="text-foreground/70">Будет указан при записи</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-industrial/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon name="Phone" className="text-industrial" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">Телефон</h3>
+                    <p className="text-foreground/70">+7 (XXX) XXX-XX-XX</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-industrial/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon name="Clock" className="text-industrial" size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-1">Режим работы</h3>
+                    <p className="text-foreground/70">Ежедневно с 10:00 до 21:00</p>
+                  </div>
+                </div>
+                <Button 
+                  className="w-full bg-industrial hover:bg-industrial/90 text-white text-lg py-6"
+                  onClick={() => window.location.href = bookingUrl}
+                >
+                  <Icon name="MessageCircle" size={20} className="mr-2" />
+                  Записаться через чат-бот
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-industrial text-white py-8">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-lg mb-2">Массаж Булат © 2025</p>
+          <p className="text-white/70">Профессиональный массаж в стиле лофт</p>
+        </div>
+      </footer>
+    </div>
+  )
+}
