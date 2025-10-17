@@ -499,14 +499,36 @@ export default function Index() {
               {selectedService && selectedDate && selectedTime && customerName && customerPhone && (
                 <Button 
                   className="w-full bg-industrial hover:bg-industrial/90 text-white text-lg py-6"
-                  onClick={() => {
-                    alert(`Запись создана!\nУслуга: ${selectedService}\nДата: ${selectedDate.toLocaleDateString('ru-RU')}\nВремя: ${selectedTime}\nИмя: ${customerName}\nТелефон: ${customerPhone}`)
-                    setShowBooking(false)
-                    setSelectedService(null)
-                    setSelectedDate(null)
-                    setSelectedTime(null)
-                    setCustomerName('')
-                    setCustomerPhone('')
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          service: selectedService,
+                          booking_date: selectedDate.toISOString().split('T')[0],
+                          booking_time: selectedTime,
+                          customer_name: customerName,
+                          customer_phone: customerPhone
+                        })
+                      })
+                      
+                      const data = await response.json()
+                      
+                      if (response.ok) {
+                        alert(`✅ Запись создана!\n\nУслуга: ${selectedService}\nДата: ${selectedDate.toLocaleDateString('ru-RU')}\nВремя: ${selectedTime}\nИмя: ${customerName}\n\nДля отмены используйте ссылку из SMS`)
+                        setShowBooking(false)
+                        setSelectedService(null)
+                        setSelectedDate(null)
+                        setSelectedTime(null)
+                        setCustomerName('')
+                        setCustomerPhone('')
+                      } else {
+                        alert(`Ошибка: ${data.error || 'Не удалось создать запись'}`)
+                      }
+                    } catch (error) {
+                      alert('Ошибка соединения с сервером')
+                    }
                   }}
                 >
                   Подтвердить запись

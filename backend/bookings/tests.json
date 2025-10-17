@@ -1,0 +1,21 @@
+{
+  "tests": [
+    {
+      "name": "Create booking",
+      "method": "POST",
+      "body": {
+        "service": "Классический массаж спина",
+        "booking_date": "2025-10-20",
+        "booking_time": "12:00",
+        "customer_name": "Иван Иванов",
+        "customer_phone": "+79991234567"
+      },
+      "expectedStatus": 201
+    },
+    {
+      "name": "Get all bookings",
+      "method": "GET",
+      "expectedStatus": 200
+    }
+  ]
+}
