@@ -9,39 +9,35 @@ export default function Index() {
 
   const services = [
     {
-      title: 'Классический массаж',
+      title: 'Классический массаж спина',
       description: 'Традиционная техника для общего расслабления и улучшения кровообращения',
       icon: 'Hand',
       prices: [
-        { duration: '60 минут', price: '3500₽' },
-        { duration: '90 минут', price: '4800₽' }
+        { duration: '30 минут', price: '1600₽' }
       ]
     },
     {
-      title: 'Deep Tissue',
-      description: 'Глубокая проработка мышц для снятия хронических напряжений',
-      icon: 'Dumbbell',
-      prices: [
-        { duration: '60 минут', price: '4000₽' },
-        { duration: '90 минут', price: '5500₽' }
-      ]
-    },
-    {
-      title: 'Спортивный массаж',
-      description: 'Восстановление после тренировок и профилактика травм',
-      icon: 'Flame',
-      prices: [
-        { duration: '60 минут', price: '4200₽' },
-        { duration: '90 минут', price: '5800₽' }
-      ]
-    },
-    {
-      title: 'Антистресс',
-      description: 'Расслабляющая техника для снятия эмоционального напряжения',
+      title: 'Успокаивающий массаж спина',
+      description: 'Расслабляющая техника для снятия напряжения',
       icon: 'Sparkles',
       prices: [
-        { duration: '60 минут', price: '3800₽' },
-        { duration: '90 минут', price: '5200₽' }
+        { duration: '30 минут', price: '1600₽' }
+      ]
+    },
+    {
+      title: 'Классический массаж тело',
+      description: 'Полный массаж всего тела для глубокого расслабления',
+      icon: 'User',
+      prices: [
+        { duration: '60 минут', price: '2600₽' }
+      ]
+    },
+    {
+      title: 'Релакс массаж тело',
+      description: 'Полная релаксация для тела и души',
+      icon: 'Heart',
+      prices: [
+        { duration: '60 минут', price: '2600₽' }
       ]
     }
   ]
