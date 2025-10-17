@@ -6,6 +6,7 @@ import Icon from '@/components/ui/icon'
 
 export default function Index() {
   const [bookingUrl] = useState('#')
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
 
   const services = [
     {
@@ -175,8 +176,9 @@ export default function Index() {
             {gallery.map((image, index) => (
               <div 
                 key={index} 
-                className="relative aspect-square overflow-hidden rounded-lg animate-fade-in hover-scale"
+                className="relative aspect-square overflow-hidden rounded-lg animate-fade-in hover-scale cursor-pointer"
                 style={{ animationDelay: `${index * 100}ms` }}
+                onClick={() => setSelectedImage(image)}
               >
                 <img 
                   src={image} 
@@ -186,6 +188,26 @@ export default function Index() {
               </div>
             ))}
           </div>
+          
+          {selectedImage && (
+            <div 
+              className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in"
+              onClick={() => setSelectedImage(null)}
+            >
+              <button 
+                className="absolute top-4 right-4 text-white hover:text-white/80 transition-colors"
+                onClick={() => setSelectedImage(null)}
+              >
+                <Icon name="X" size={32} />
+              </button>
+              <img 
+                src={selectedImage} 
+                alt="Увеличенное фото"
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
       </section>
 
