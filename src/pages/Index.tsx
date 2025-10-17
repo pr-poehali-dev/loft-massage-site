@@ -90,7 +90,7 @@ export default function Index() {
         />
         <div className="container mx-auto px-4 relative z-10 text-center animate-fade-in">
           <h2 className="text-6xl md:text-8xl font-bold mb-6 text-white drop-shadow-lg uppercase tracking-tight">
-            Массаж<br/>Лофт
+            Массаж<br/>Булат
           </h2>
           <p className="text-xl md:text-2xl text-white/90 drop-shadow-md mb-8 max-w-2xl mx-auto">
             Профессиональный массаж в атмосфере индустриального комфорта
