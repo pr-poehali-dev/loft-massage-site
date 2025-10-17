@@ -204,7 +204,7 @@ export default function Index() {
                 <h2 className="text-4xl md:text-5xl font-bold mb-6 uppercase">О мастере</h2>
                 <h3 className="text-2xl font-semibold text-industrial mb-4">Булат</h3>
                 <p className="text-foreground/80 text-lg leading-relaxed mb-4">
-                  Сертифицированный массажист с опытом работы более 8 лет. Специализируюсь на классических и современных техниках массажа.
+                  Сертифицированный массажист с опытом работы 4 года. Специализируюсь на классических и современных техниках массажа.
                 </p>
                 <p className="text-foreground/80 text-lg leading-relaxed mb-6">
                   Моя философия — индивидуальный подход к каждому клиенту. Я создаю атмосферу комфорта и релаксации в уникальном лофт-пространстве.
@@ -212,15 +212,15 @@ export default function Index() {
                 <div className="flex flex-wrap gap-3">
                   <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
                     <Icon name="Award" size={20} className="text-industrial" />
-                    <span>8+ лет опыта</span>
+                    <span>4 года стажа</span>
                   </div>
                   <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
                     <Icon name="Users" size={20} className="text-industrial" />
-                    <span>500+ клиентов</span>
+                    <span>100+ клиентов</span>
                   </div>
                   <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
                     <Icon name="Star" size={20} className="text-industrial" />
-                    <span>Сертификаты</span>
+                    <span>600+ сеансов</span>
                   </div>
                 </div>
               </div>
