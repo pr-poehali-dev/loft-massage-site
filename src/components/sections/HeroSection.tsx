@@ -11,7 +11,7 @@ export default function HeroSection({ onBookingClick }: HeroSectionProps) {
       <div 
         className="absolute inset-0 opacity-60"
         style={{
-          backgroundImage: 'url(https://cdn.poehali.dev/projects/f5643ba3-1fc8-40b9-b1c5-c401c23a1d03/files/05f91387-4749-4cd8-bb2f-e1564b041b5e.jpg)',
+          backgroundImage: 'url(https://cdn.poehali.dev/files/51fb03f3-05b0-473b-b1d4-616e40b0cc9a.jpeg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         }}

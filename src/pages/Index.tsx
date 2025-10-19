@@ -48,11 +48,11 @@ export default function Index() {
   ]
 
   const gallery = [
-    'https://cdn.poehali.dev/projects/f5643ba3-1fc8-40b9-b1c5-c401c23a1d03/files/dbbf1427-3c7a-4499-b8b0-f5114e651f9b.jpg',
-    'https://cdn.poehali.dev/projects/f5643ba3-1fc8-40b9-b1c5-c401c23a1d03/files/094691cf-cfab-407c-9a70-aed633cdaddd.jpg',
-    'https://cdn.poehali.dev/projects/f5643ba3-1fc8-40b9-b1c5-c401c23a1d03/files/425e9132-8315-49f7-bd31-95901370bf2c.jpg',
-    'https://cdn.poehali.dev/projects/f5643ba3-1fc8-40b9-b1c5-c401c23a1d03/files/22c0d83c-29d8-4d7e-aa66-080e7e458362.jpg',
-    'https://cdn.poehali.dev/projects/f5643ba3-1fc8-40b9-b1c5-c401c23a1d03/files/54c69b2e-a93c-4c22-998b-1628c514031f.jpg'
+    'https://cdn.poehali.dev/files/51fb03f3-05b0-473b-b1d4-616e40b0cc9a.jpeg',
+    'https://cdn.poehali.dev/files/6d0d6824-4cda-4b89-b638-662147a52b32.jpeg',
+    'https://cdn.poehali.dev/files/167f45c0-abe1-48e5-a055-84bd1a5a16ab.jpeg',
+    'https://cdn.poehali.dev/files/548928f5-204d-486a-8679-250ac3c63151.jpeg',
+    'https://cdn.poehali.dev/files/bdbbc6a9-36bb-47e2-9f1e-88004768dd98.jpeg'
   ]
 
   const handleServiceSelect = (serviceTitle: string) => {
