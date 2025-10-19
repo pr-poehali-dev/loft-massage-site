@@ -6,42 +6,46 @@ import Icon from '@/components/ui/icon'
 
 export default function Index() {
   const [bookingUrl] = useState('#')
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [showCertificates, setShowCertificates] = useState(false)
+  const [showBooking, setShowBooking] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedTime, setSelectedTime] = useState<string | null>(null)
+  const [selectedService, setSelectedService] = useState<string | null>(null)
+  const [customerName, setCustomerName] = useState('')
+  const [customerPhone, setCustomerPhone] = useState('')
 
   const services = [
     {
-      title: 'Классический массаж',
-      description: 'Традиционная техника для общего расслабления и улучшения кровообращения',
+      title: 'Классический массаж спина',
+      description: 'Этот массаж позволит вам почувствовать легкость в теле и избавит вас от скованности в движениях. Отлично подходит тем кто усердно работает над собой или очень устает на работе. Подарит легкий заряд бодрости и наполняет вас силой',
       icon: 'Hand',
       prices: [
-        { duration: '60 минут', price: '3500₽' },
-        { duration: '90 минут', price: '4800₽' }
+        { duration: '30 минут', price: '1600₽' }
       ]
     },
     {
-      title: 'Deep Tissue',
-      description: 'Глубокая проработка мышц для снятия хронических напряжений',
-      icon: 'Dumbbell',
-      prices: [
-        { duration: '60 минут', price: '4000₽' },
-        { duration: '90 минут', price: '5500₽' }
-      ]
-    },
-    {
-      title: 'Спортивный массаж',
-      description: 'Восстановление после тренировок и профилактика травм',
-      icon: 'Flame',
-      prices: [
-        { duration: '60 минут', price: '4200₽' },
-        { duration: '90 минут', price: '5800₽' }
-      ]
-    },
-    {
-      title: 'Антистресс',
-      description: 'Расслабляющая техника для снятия эмоционального напряжения',
+      title: 'Успокаивающий массаж спина',
+      description: 'Этот массаж создан специально для тех, кто нуждается в эмоциональной разгрузке. Мягкие, плавные движения помогут вам расслабиться, снять стресс и восстановить внутреннюю гармонию. Идеален после напряженного дня',
       icon: 'Sparkles',
       prices: [
-        { duration: '60 минут', price: '3800₽' },
-        { duration: '90 минут', price: '5200₽' }
+        { duration: '30 минут', price: '1600₽' }
+      ]
+    },
+    {
+      title: 'Классический массаж тело',
+      description: 'Комплексная проработка всего тела. Улучшает кровообращение, снимает мышечное напряжение и дарит чувство обновления. Вы почувствуете как каждая клеточка вашего тела наполняется энергией и жизненной силой',
+      icon: 'User',
+      prices: [
+        { duration: '60 минут', price: '2600₽' }
+      ]
+    },
+    {
+      title: 'Расслабляющий массаж тела',
+      description: 'Массаж позволяющий вам собраться с мыслями, отпустить все ваши тревоги и заботы. Отдохните телом и душой пока руки мастера творят свое волшебство',
+      icon: 'Heart',
+      prices: [
+        { duration: '60 минут', price: '2600₽' }
       ]
     }
   ]
@@ -67,7 +71,7 @@ export default function Index() {
               <a href="#about" className="text-foreground/80 hover:text-foreground transition-colors">О мастере</a>
               <a href="#contacts" className="text-foreground/80 hover:text-foreground transition-colors">Контакты</a>
             </div>
-            <Button className="bg-industrial hover:bg-industrial/90 text-white" onClick={() => window.location.href = bookingUrl}>
+            <Button className="bg-industrial hover:bg-industrial/90 text-white" onClick={() => setShowBooking(true)}>
               Записаться
             </Button>
           </div>
@@ -86,7 +90,7 @@ export default function Index() {
         />
         <div className="container mx-auto px-4 relative z-10 text-center animate-fade-in">
           <h2 className="text-6xl md:text-8xl font-bold mb-6 text-white drop-shadow-lg uppercase tracking-tight">
-            Массаж<br/>Лофт
+            Массаж<br/>Булат
           </h2>
           <p className="text-xl md:text-2xl text-white/90 drop-shadow-md mb-8 max-w-2xl mx-auto">
             Профессиональный массаж в атмосфере индустриального комфорта
@@ -94,7 +98,7 @@ export default function Index() {
           <Button 
             size="lg" 
             className="bg-industrial hover:bg-industrial/90 text-white text-lg px-8 py-6"
-            onClick={() => window.location.href = bookingUrl}
+            onClick={() => setShowBooking(true)}
           >
             Записаться на сеанс
           </Button>
@@ -157,7 +161,10 @@ export default function Index() {
                       ))}
                       <Button 
                         className="w-full mt-4 bg-industrial hover:bg-industrial/90 text-white"
-                        onClick={() => window.location.href = bookingUrl}
+                        onClick={() => {
+                          setSelectedService(service.title)
+                          setShowBooking(true)
+                        }}
                       >
                         Записаться
                       </Button>
@@ -179,8 +186,9 @@ export default function Index() {
             {gallery.map((image, index) => (
               <div 
                 key={index} 
-                className="relative aspect-square overflow-hidden rounded-lg animate-fade-in hover-scale"
+                className="relative aspect-square overflow-hidden rounded-lg animate-fade-in hover-scale cursor-pointer"
                 style={{ animationDelay: `${index * 100}ms` }}
+                onClick={() => setSelectedImage(image)}
               >
                 <img 
                   src={image} 
@@ -190,6 +198,26 @@ export default function Index() {
               </div>
             ))}
           </div>
+          
+          {selectedImage && (
+            <div 
+              className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in"
+              onClick={() => setSelectedImage(null)}
+            >
+              <button 
+                className="absolute top-4 right-4 text-white hover:text-white/80 transition-colors"
+                onClick={() => setSelectedImage(null)}
+              >
+                <Icon name="X" size={32} />
+              </button>
+              <img 
+                src={selectedImage} 
+                alt="Увеличенное фото"
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
         </div>
       </section>
 
@@ -208,25 +236,32 @@ export default function Index() {
                 <h2 className="text-4xl md:text-5xl font-bold mb-6 uppercase">О мастере</h2>
                 <h3 className="text-2xl font-semibold text-industrial mb-4">Булат</h3>
                 <p className="text-foreground/80 text-lg leading-relaxed mb-4">
-                  Сертифицированный массажист с опытом работы более 8 лет. Специализируюсь на классических и современных техниках массажа.
+                  Сертифицированный массажист с опытом работы 4 года. Специализируюсь на классических и современных техниках массажа.
                 </p>
                 <p className="text-foreground/80 text-lg leading-relaxed mb-6">
                   Моя философия — индивидуальный подход к каждому клиенту. Я создаю атмосферу комфорта и релаксации в уникальном лофт-пространстве.
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 mb-6">
                   <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
                     <Icon name="Award" size={20} className="text-industrial" />
-                    <span>8+ лет опыта</span>
+                    <span>4 года стажа</span>
                   </div>
                   <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
                     <Icon name="Users" size={20} className="text-industrial" />
-                    <span>500+ клиентов</span>
+                    <span>100+ клиентов</span>
                   </div>
                   <div className="flex items-center gap-2 bg-industrial/10 px-4 py-2 rounded-full">
                     <Icon name="Star" size={20} className="text-industrial" />
-                    <span>Сертификаты</span>
+                    <span>600+ сеансов</span>
                   </div>
                 </div>
+                <Button 
+                  className="bg-industrial hover:bg-industrial/90 text-white"
+                  onClick={() => setShowCertificates(true)}
+                >
+                  <Icon name="Award" size={20} className="mr-2" />
+                  Посмотреть сертификаты
+                </Button>
               </div>
             </div>
           </div>
@@ -264,15 +299,16 @@ export default function Index() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Режим работы</h3>
-                    <p className="text-foreground/70">Ежедневно с 10:00 до 21:00</p>
+                    <p className="text-foreground/70">Пн, Ср, Пт: 11:00 - 14:00 и 17:00 - 20:00</p>
+                    <p className="text-foreground/70">Сб, Вс: 9:00 - 20:00</p>
                   </div>
                 </div>
                 <Button 
                   className="w-full bg-industrial hover:bg-industrial/90 text-white text-lg py-6"
-                  onClick={() => window.location.href = bookingUrl}
+                  onClick={() => setShowBooking(true)}
                 >
-                  <Icon name="MessageCircle" size={20} className="mr-2" />
-                  Записаться через чат-бот
+                  <Icon name="Calendar" size={20} className="mr-2" />
+                  Записаться онлайн
                 </Button>
               </CardContent>
             </Card>
@@ -286,6 +322,222 @@ export default function Index() {
           <p className="text-white/70">Профессиональный массаж в стиле лофт</p>
         </div>
       </footer>
+
+      {showCertificates && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in overflow-y-auto"
+          onClick={() => setShowCertificates(false)}
+        >
+          <div className="container mx-auto max-w-5xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold text-white">Сертификаты</h2>
+              <button 
+                className="text-white hover:text-white/80 transition-colors"
+                onClick={() => setShowCertificates(false)}
+              >
+                <Icon name="X" size={32} />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white/10 rounded-lg p-8 flex items-center justify-center text-white text-center min-h-[300px]">
+                <div>
+                  <Icon name="FileText" size={48} className="mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Сертификат 1</p>
+                  <p className="text-sm opacity-70 mt-2">Добавьте изображения сертификатов</p>
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-lg p-8 flex items-center justify-center text-white text-center min-h-[300px]">
+                <div>
+                  <Icon name="FileText" size={48} className="mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Сертификат 2</p>
+                  <p className="text-sm opacity-70 mt-2">Добавьте изображения сертификатов</p>
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-lg p-8 flex items-center justify-center text-white text-center min-h-[300px]">
+                <div>
+                  <Icon name="FileText" size={48} className="mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Сертификат 3</p>
+                  <p className="text-sm opacity-70 mt-2">Добавьте изображения сертификатов</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showBooking && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-fade-in overflow-y-auto"
+          onClick={() => setShowBooking(false)}
+        >
+          <Card className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-2xl">Онлайн запись</CardTitle>
+                  <CardDescription>Выберите дату, время и услугу</CardDescription>
+                </div>
+                <button 
+                  className="text-foreground/70 hover:text-foreground transition-colors"
+                  onClick={() => setShowBooking(false)}
+                >
+                  <Icon name="X" size={24} />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Выбор услуги */}
+              <div>
+                <h3 className="font-semibold mb-3">Выберите услугу</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {services.map((service, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedService(service.title)}
+                      className={`p-4 rounded-lg border-2 text-left transition-all ${
+                        selectedService === service.title 
+                          ? 'border-industrial bg-industrial/10' 
+                          : 'border-border hover:border-industrial/50'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold">{service.title}</p>
+                          <p className="text-sm text-foreground/70">{service.prices[0].duration}</p>
+                        </div>
+                        <p className="font-bold text-industrial">{service.prices[0].price}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Выбор даты */}
+              <div>
+                <h3 className="font-semibold mb-3">Выберите дату</h3>
+                <input 
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    setSelectedDate(new Date(e.target.value))
+                    setSelectedTime(null)
+                  }}
+                  className="w-full p-3 rounded-lg border-2 border-border focus:border-industrial outline-none"
+                />
+              </div>
+
+              {/* Выбор времени */}
+              {selectedDate && (
+                <div>
+                  <h3 className="font-semibold mb-3">Выберите время</h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {(() => {
+                      const day = selectedDate.getDay()
+                      const isWeekend = day === 0 || day === 6
+                      const isWorkDay = day === 1 || day === 3 || day === 5
+                      
+                      if (!isWeekend && !isWorkDay) {
+                        return <p className="text-foreground/70 col-span-full">Выходной день</p>
+                      }
+                      
+                      const times = []
+                      if (isWorkDay) {
+                        // Пн, Ср, Пт: 11:00-14:00 и 17:00-20:00
+                        for (let h = 11; h < 14; h++) {
+                          times.push(`${h}:00`, `${h}:30`)
+                        }
+                        for (let h = 17; h < 20; h++) {
+                          times.push(`${h}:00`, `${h}:30`)
+                        }
+                      } else {
+                        // Сб, Вс: 9:00-20:00
+                        for (let h = 9; h < 20; h++) {
+                          times.push(`${h}:00`, `${h}:30`)
+                        }
+                      }
+                      
+                      return times.map(time => (
+                        <button
+                          key={time}
+                          onClick={() => setSelectedTime(time)}
+                          className={`p-3 rounded-lg border-2 transition-all ${
+                            selectedTime === time 
+                              ? 'border-industrial bg-industrial text-white' 
+                              : 'border-border hover:border-industrial/50'
+                          }`}
+                        >
+                          {time}
+                        </button>
+                      ))
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Контактные данные */}
+              {selectedTime && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Ваши контакты</h3>
+                  <input 
+                    type="text"
+                    placeholder="Ваше имя"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full p-3 rounded-lg border-2 border-border focus:border-industrial outline-none"
+                  />
+                  <input 
+                    type="tel"
+                    placeholder="Телефон"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full p-3 rounded-lg border-2 border-border focus:border-industrial outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Кнопка записи */}
+              {selectedService && selectedDate && selectedTime && customerName && customerPhone && (
+                <Button 
+                  className="w-full bg-industrial hover:bg-industrial/90 text-white text-lg py-6"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          service: selectedService,
+                          booking_date: selectedDate.toISOString().split('T')[0],
+                          booking_time: selectedTime,
+                          customer_name: customerName,
+                          customer_phone: customerPhone
+                        })
+                      })
+                      
+                      const data = await response.json()
+                      
+                      if (response.ok) {
+                        alert(`✅ Запись создана!\n\nУслуга: ${selectedService}\nДата: ${selectedDate.toLocaleDateString('ru-RU')}\nВремя: ${selectedTime}\nИмя: ${customerName}\n\nДля отмены используйте ссылку из SMS`)
+                        setShowBooking(false)
+                        setSelectedService(null)
+                        setSelectedDate(null)
+                        setSelectedTime(null)
+                        setCustomerName('')
+                        setCustomerPhone('')
+                      } else {
+                        alert(`Ошибка: ${data.error || 'Не удалось создать запись'}`)
+                      }
+                    } catch (error) {
+                      alert('Ошибка соединения с сервером')
+                    }
+                  }}
+                >
+                  Подтвердить запись
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
