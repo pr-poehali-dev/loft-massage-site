@@ -13,7 +13,7 @@ export default function AboutSection({ onShowCertificates }: AboutSectionProps) 
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div className="animate-fade-in">
               <img 
-                src="https://cdn.poehali.dev/files/bfabeb17-fe5a-4a57-8306-df33558f9ec1.jpeg"
+                src="/images/master.jpeg"
                 alt="Мастер Булат"
                 className="rounded-lg shadow-2xl"
               />

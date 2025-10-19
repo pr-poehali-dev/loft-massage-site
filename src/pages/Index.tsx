@@ -9,6 +9,7 @@ import AboutSection from '@/components/sections/AboutSection'
 import ContactsSection from '@/components/sections/ContactsSection'
 import CertificatesModal from '@/components/modals/CertificatesModal'
 import BookingModal from '@/components/modals/BookingModal'
+import { API_ENDPOINTS } from '@/config/api'
 
 export default function Index() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -48,11 +49,11 @@ export default function Index() {
   ]
 
   const gallery = [
-    'https://cdn.poehali.dev/files/e1832efa-4a2d-41cb-b464-51b3e1d6974b.jpeg',
-    'https://cdn.poehali.dev/files/ca89434b-6670-4b10-9942-f9b1f36a7f7a.jpeg',
-    'https://cdn.poehali.dev/files/73991933-3d6d-476a-be3e-da7f0c43bc38.jpeg',
-    'https://cdn.poehali.dev/files/66350afb-c5f2-4d92-b705-7bdc846b7714.jpeg',
-    'https://cdn.poehali.dev/files/bfabeb17-fe5a-4a57-8306-df33558f9ec1.jpeg'
+    '/images/gallery-1.jpeg',
+    '/images/gallery-2.jpeg',
+    '/images/gallery-3.jpeg',
+    '/images/gallery-4.jpeg',
+    '/images/gallery-5.jpeg'
   ]
 
   const handleServiceSelect = (serviceTitle: string) => {
@@ -62,7 +63,7 @@ export default function Index() {
 
   const handleConfirmBooking = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04', {
+      const response = await fetch(API_ENDPOINTS.bookings, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

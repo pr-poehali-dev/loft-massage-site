@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import Icon from '@/components/ui/icon'
+import { API_ENDPOINTS } from '@/config/api'
 
 interface Booking {
   id: number
@@ -24,7 +25,7 @@ export default function Admin() {
   const loadBookings = async () => {
     setLoading(true)
     try {
-      const response = await fetch('https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04')
+      const response = await fetch(API_ENDPOINTS.bookings)
       const data = await response.json()
       setBookings(data)
     } catch (error) {
@@ -41,7 +42,7 @@ export default function Admin() {
     if (!confirm('Отменить эту запись?')) return
     
     try {
-      const response = await fetch(`https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04?id=${id}`, {
+      const response = await fetch(`${API_ENDPOINTS.bookings}?id=${id}`, {
         method: 'DELETE'
       })
       
