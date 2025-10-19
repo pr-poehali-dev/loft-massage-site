@@ -9,7 +9,6 @@ import AboutSection from '@/components/sections/AboutSection'
 import ContactsSection from '@/components/sections/ContactsSection'
 import CertificatesModal from '@/components/modals/CertificatesModal'
 import BookingModal from '@/components/modals/BookingModal'
-import { API_ENDPOINTS } from '@/config/api'
 
 export default function Index() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -63,7 +62,7 @@ export default function Index() {
 
   const handleConfirmBooking = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.bookings, {
+      const response = await fetch('https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
