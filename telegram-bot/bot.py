@@ -11,6 +11,7 @@ import json
 
 # Состояния для записи
 class BookingStates(StatesGroup):
+    waiting_for_service = State()
     waiting_for_name = State()
     waiting_for_phone = State()
     waiting_for_date = State()
@@ -35,7 +36,35 @@ WORK_SCHEDULE = {
     6: ["09:00", "20:00", None, None]  # Воскресенье (без перерыва, 9-20)
 }
 
-# Длительность сеанса в минутах
+# Виды массажа
+MASSAGE_SERVICES = {
+    "classic_back": {
+        "name": "Классический массаж спина",
+        "duration": 30,
+        "price": "1600₽",
+        "description": "Позволит вам почувствовать легкость в теле и избавит от скованности в движениях"
+    },
+    "relaxing_back": {
+        "name": "Успокаивающий массаж спина",
+        "duration": 30,
+        "price": "1600₽",
+        "description": "Мягкие движения помогут расслабиться, снять стресс и восстановить гармонию"
+    },
+    "classic_body": {
+        "name": "Классический массаж тело",
+        "duration": 60,
+        "price": "2600₽",
+        "description": "Комплексная проработка всего тела, улучшает кровообращение"
+    },
+    "relaxing_body": {
+        "name": "Расслабляющий массаж тела",
+        "duration": 60,
+        "price": "2600₽",
+        "description": "Позволяет собраться с мыслями, отпустить тревоги и заботы"
+    }
+}
+
+# Длительность сеанса в минутах (по умолчанию)
 SESSION_DURATION = 60
 
 # Хранилище записей (в продакшене использовать БД)
@@ -55,21 +84,36 @@ def save_bookings():
     with open('bookings.json', 'w', encoding='utf-8') as f:
         json.dump(bookings, f, ensure_ascii=False, indent=2)
 
-def get_available_times(date_str: str):
-    """Получить доступные слоты времени на выбранную дату"""
+def is_slot_available(date_str: str, time_str: str, duration: int) -> bool:
+    """Проверить, свободен ли слот с учетом длительности услуги"""
+    booking_key = f"{date_str}_{time_str}"
+    return booking_key not in bookings
+
+def get_available_times(date_str: str, service_duration: int = 60):
+    """Получить доступные слоты времени на выбранную дату с учетом длительности услуги"""
     try:
         date_obj = datetime.strptime(date_str, "%d.%m.%Y")
     except ValueError:
         return []
     
-    weekday = date_obj.weekday()
-    
-    # Проверяем, работает ли массажист в этот день
-    if WORK_SCHEDULE[weekday] is None:
+    # Проверяем, не выходной ли день (дополнительный)
+    if date_str in extra_days_off:
         return []
     
-    schedule = WORK_SCHEDULE[weekday]
+    # Проверяем кастомное расписание для конкретной даты
+    if date_str in custom_schedule:
+        schedule = custom_schedule[date_str]
+        if schedule is None:
+            return []
+    else:
+        weekday = date_obj.weekday()
+        # Проверяем, работает ли массажист в этот день
+        if WORK_SCHEDULE[weekday] is None:
+            return []
+        schedule = WORK_SCHEDULE[weekday]
+    
     available_slots = []
+    weekday = date_obj.weekday()
     
     # Для Пн, Ср, Пт: два рабочих окна (утро и вечер)
     if weekday in [0, 2, 4]:
@@ -81,10 +125,9 @@ def get_available_times(date_str: str):
         
         while current_time < end_time:
             time_str = current_time.strftime("%H:%M")
-            booking_key = f"{date_str}_{time_str}"
-            if booking_key not in bookings:
+            if is_slot_available(date_str, time_str, service_duration):
                 available_slots.append(time_str)
-            current_time += timedelta(minutes=SESSION_DURATION)
+            current_time += timedelta(minutes=service_duration)
         
         # Вечерние слоты (17:00-20:00)
         current_time = datetime.strptime(evening_start, "%H:%M")
@@ -92,10 +135,9 @@ def get_available_times(date_str: str):
         
         while current_time < end_time:
             time_str = current_time.strftime("%H:%M")
-            booking_key = f"{date_str}_{time_str}"
-            if booking_key not in bookings:
+            if is_slot_available(date_str, time_str, service_duration):
                 available_slots.append(time_str)
-            current_time += timedelta(minutes=SESSION_DURATION)
+            current_time += timedelta(minutes=service_duration)
     
     # Для Сб, Вс: один длинный рабочий день (9:00-20:00)
     else:
@@ -105,10 +147,9 @@ def get_available_times(date_str: str):
         
         while current_time < end_time:
             time_str = current_time.strftime("%H:%M")
-            booking_key = f"{date_str}_{time_str}"
-            if booking_key not in bookings:
+            if is_slot_available(date_str, time_str, service_duration):
                 available_slots.append(time_str)
-            current_time += timedelta(minutes=SESSION_DURATION)
+            current_time += timedelta(minutes=service_duration)
     
     return available_slots
 
@@ -162,12 +203,56 @@ async def cmd_start(message: Message):
 # Команда /book - начало записи
 @dp.message(Command("book"))
 async def cmd_book(message: Message, state: FSMContext):
-    await state.set_state(BookingStates.waiting_for_name)
+    await state.set_state(BookingStates.waiting_for_service)
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text=f"💆‍♂️ {MASSAGE_SERVICES['classic_back']['name']} - {MASSAGE_SERVICES['classic_back']['price']} (30 мин)",
+            callback_data="service_classic_back"
+        )],
+        [InlineKeyboardButton(
+            text=f"✨ {MASSAGE_SERVICES['relaxing_back']['name']} - {MASSAGE_SERVICES['relaxing_back']['price']} (30 мин)",
+            callback_data="service_relaxing_back"
+        )],
+        [InlineKeyboardButton(
+            text=f"🧘 {MASSAGE_SERVICES['classic_body']['name']} - {MASSAGE_SERVICES['classic_body']['price']} (60 мин)",
+            callback_data="service_classic_body"
+        )],
+        [InlineKeyboardButton(
+            text=f"💫 {MASSAGE_SERVICES['relaxing_body']['name']} - {MASSAGE_SERVICES['relaxing_body']['price']} (60 мин)",
+            callback_data="service_relaxing_body"
+        )]
+    ])
+    
     await message.answer(
         "📝 Начнем запись!\n\n"
+        "Выберите вид массажа:",
+        reply_markup=keyboard
+    )
+
+# Обработка выбора услуги
+@dp.callback_query(F.data.startswith("service_"))
+async def process_service_selection(callback: F.CallbackQuery, state: FSMContext):
+    service_key = callback.data.replace("service_", "")
+    service = MASSAGE_SERVICES[service_key]
+    
+    await state.update_data(
+        service_key=service_key,
+        service_name=service['name'],
+        service_price=service['price'],
+        service_duration=service['duration']
+    )
+    
+    await state.set_state(BookingStates.waiting_for_name)
+    
+    await callback.message.answer(
+        f"Вы выбрали: {service['name']}\n"
+        f"💰 Цена: {service['price']}\n"
+        f"⏱ Длительность: {service['duration']} минут\n\n"
         "Как вас зовут?",
         reply_markup=ReplyKeyboardRemove()
     )
+    await callback.answer()
 
 # Получение имени
 @dp.message(BookingStates.waiting_for_name)
@@ -238,14 +323,22 @@ async def process_date(message: Message, state: FSMContext):
     # Проверяем, работает ли массажист в этот день
     weekday = date_obj.weekday()
     if WORK_SCHEDULE[weekday] is None:
+        day_name = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу", "воскресенье"][weekday]
         await message.answer(
-            "❌ К сожалению, в воскресенье не работаю.\n"
-            "Пожалуйста, выберите другой день."
+            f"❌ К сожалению, во {day_name} не работаю (выходной).\n"
+            "Пожалуйста, выберите другой день.\n\n"
+            "📋 Рабочие дни:\n"
+            "Пн, Ср, Пт: 11:00-14:00 и 17:00-20:00\n"
+            "Сб, Вс: 09:00-20:00"
         )
         return
     
-    # Получаем доступные слоты
-    available_times = get_available_times(date_str)
+    # Получаем длительность выбранной услуги
+    data = await state.get_data()
+    service_duration = data.get('service_duration', 60)
+    
+    # Получаем доступные слоты с учетом длительности
+    available_times = get_available_times(date_str, service_duration)
     
     if not available_times:
         await message.answer(
@@ -273,8 +366,11 @@ async def process_time(message: Message, state: FSMContext):
     data = await state.get_data()
     date_str = data['date']
     
+    # Получаем длительность услуги для проверки
+    service_duration = data.get('service_duration', 60)
+    
     # Проверяем, что выбранное время доступно
-    available_times = get_available_times(date_str)
+    available_times = get_available_times(date_str, service_duration)
     if time_str not in available_times:
         await message.answer(
             "❌ Это время уже занято или недоступно.\n"
@@ -291,6 +387,9 @@ async def process_time(message: Message, state: FSMContext):
         "phone": data['phone'],
         "date": date_str,
         "time": time_str,
+        "service_name": data.get('service_name', 'Массаж'),
+        "service_price": data.get('service_price', ''),
+        "service_duration": service_duration,
         "user_id": message.from_user.id,
         "username": message.from_user.username
     }
@@ -299,11 +398,13 @@ async def process_time(message: Message, state: FSMContext):
     # Формируем сообщение для пользователя
     confirmation = (
         "✅ Ваша запись успешно создана!\n\n"
+        f"💆‍♂️ Услуга: {data.get('service_name', 'Массаж')}\n"
+        f"💰 Цена: {data.get('service_price', '')}\n"
         f"👤 Имя: {data['name']}\n"
         f"📱 Телефон: {data['phone']}\n"
         f"📅 Дата: {date_str}\n"
         f"🕐 Время: {time_str}\n"
-        f"⏱ Длительность: 60 минут\n\n"
+        f"⏱ Длительность: {service_duration} минут\n\n"
         "📍 Жду вас! Скоро свяжусь для подтверждения.\n\n"
         "Для отмены записи используйте /myBookings"
     )
@@ -314,10 +415,13 @@ async def process_time(message: Message, state: FSMContext):
     # Отправляем уведомление администратору
     admin_message = (
         "🔔 Новая запись на массаж!\n\n"
+        f"💆‍♂️ Услуга: {data.get('service_name', 'Массаж')}\n"
+        f"💰 Цена: {data.get('service_price', '')}\n"
         f"👤 Имя: {data['name']}\n"
         f"📱 Телефон: {data['phone']}\n"
         f"📅 Дата: {date_str}\n"
         f"🕐 Время: {time_str}\n"
+        f"⏱ Длительность: {service_duration} мин\n"
         f"👨‍💼 Telegram: @{message.from_user.username or 'Не указан'}\n"
         f"🆔 ID: {message.from_user.id}"
     )
@@ -349,9 +453,14 @@ async def cmd_my_bookings(message: Message):
     message_text = "📋 Ваши записи:\n\n"
     
     for key, booking in user_bookings:
+        service_name = booking.get('service_name', 'Массаж')
+        service_price = booking.get('service_price', '')
+        duration = booking.get('service_duration', 60)
         message_text += (
+            f"💆‍♂️ {service_name}\n"
+            f"💰 {service_price}\n"
             f"📅 {booking['date']} в {booking['time']}\n"
-            f"👤 {booking['name']}\n\n"
+            f"⏱ {duration} минут\n\n"
         )
     
     # Создаем кнопки для отмены
