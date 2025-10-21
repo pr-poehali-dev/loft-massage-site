@@ -16,6 +16,12 @@ class BookingStates(StatesGroup):
     waiting_for_date = State()
     waiting_for_time = State()
 
+# Состояния для админ-панели
+class AdminStates(StatesGroup):
+    waiting_for_day_off_date = State()
+    waiting_for_custom_schedule_date = State()
+    waiting_for_custom_schedule_time = State()
+
 # Инициализация бота
 BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 ADMIN_CHAT_ID = os.getenv('ADMIN_CHAT_ID')
@@ -41,6 +47,12 @@ SESSION_DURATION = 60
 # Хранилище записей (в продакшене использовать БД)
 bookings = {}
 
+# Дополнительные выходные дни (формат: "ДД.ММ.ГГГГ")
+extra_days_off = set()
+
+# Кастомное расписание для конкретных дат (формат: {"ДД.ММ.ГГГГ": [начало, конец, ...]})
+custom_schedule = {}
+
 def load_bookings():
     """Загрузка записей из файла"""
     global bookings
@@ -49,6 +61,26 @@ def load_bookings():
             bookings = json.load(f)
     except FileNotFoundError:
         bookings = {}
+
+def load_schedule_settings():
+    """Загрузка настроек расписания"""
+    global extra_days_off, custom_schedule
+    try:
+        with open('schedule_settings.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            extra_days_off = set(data.get('extra_days_off', []))
+            custom_schedule = data.get('custom_schedule', {})
+    except FileNotFoundError:
+        extra_days_off = set()
+        custom_schedule = {}
+
+def save_schedule_settings():
+    """Сохранение настроек расписания"""
+    with open('schedule_settings.json', 'w', encoding='utf-8') as f:
+        json.dump({
+            'extra_days_off': list(extra_days_off),
+            'custom_schedule': custom_schedule
+        }, f, ensure_ascii=False, indent=2)
 
 def save_bookings():
     """Сохранение записей в файл"""
@@ -62,14 +94,24 @@ def get_available_times(date_str: str):
     except ValueError:
         return []
     
-    weekday = date_obj.weekday()
-    
-    # Проверяем, работает ли массажист в этот день
-    if WORK_SCHEDULE[weekday] is None:
+    # Проверяем, не выходной ли день (дополнительный)
+    if date_str in extra_days_off:
         return []
     
-    schedule = WORK_SCHEDULE[weekday]
+    # Проверяем кастомное расписание для конкретной даты
+    if date_str in custom_schedule:
+        schedule = custom_schedule[date_str]
+        if schedule is None:
+            return []
+    else:
+        weekday = date_obj.weekday()
+        # Проверяем, работает ли массажист в этот день
+        if WORK_SCHEDULE[weekday] is None:
+            return []
+        schedule = WORK_SCHEDULE[weekday]
+    
     available_slots = []
+    weekday = date_obj.weekday()
     
     # Для Пн, Ср, Пт: два рабочих окна (утро и вечер)
     if weekday in [0, 2, 4]:
@@ -414,11 +456,251 @@ async def cmd_cancel(message: Message, state: FSMContext):
         reply_markup=ReplyKeyboardRemove()
     )
 
+# ========== АДМИН-ПАНЕЛЬ ==========
+
+def is_admin(user_id: int) -> bool:
+    """Проверка, является ли пользователь администратором"""
+    return str(user_id) == str(ADMIN_CHAT_ID)
+
+@dp.message(Command("admin"))
+async def cmd_admin(message: Message):
+    """Админ-панель управления расписанием"""
+    if not is_admin(message.from_user.id):
+        await message.answer("❌ У вас нет доступа к админ-панели.")
+        return
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📅 Добавить выходной день", callback_data="admin_add_dayoff")],
+        [InlineKeyboardButton(text="🗓 Посмотреть выходные", callback_data="admin_view_dayoffs")],
+        [InlineKeyboardButton(text="🔄 Изменить график на день", callback_data="admin_custom_schedule")],
+        [InlineKeyboardButton(text="📊 Все записи", callback_data="admin_all_bookings")],
+        [InlineKeyboardButton(text="🗑 Очистить старые записи", callback_data="admin_clear_old")]
+    ])
+    
+    await message.answer(
+        "⚙️ Админ-панель управления расписанием\n\n"
+        "Выберите действие:",
+        reply_markup=keyboard
+    )
+
+# Просмотр всех записей (админ)
+@dp.callback_query(F.data == "admin_all_bookings")
+async def admin_all_bookings(callback: F.CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    if not bookings:
+        await callback.message.answer("📋 Записей пока нет.")
+        await callback.answer()
+        return
+    
+    # Группируем записи по датам
+    bookings_by_date = {}
+    for key, booking in bookings.items():
+        date = booking['date']
+        if date not in bookings_by_date:
+            bookings_by_date[date] = []
+        bookings_by_date[date].append(booking)
+    
+    # Сортируем даты
+    sorted_dates = sorted(bookings_by_date.keys(), key=lambda x: datetime.strptime(x, "%d.%m.%Y"))
+    
+    message_text = "📊 Все записи:\n\n"
+    for date in sorted_dates:
+        message_text += f"📅 {date}:\n"
+        for booking in sorted(bookings_by_date[date], key=lambda x: x['time']):
+            message_text += f"  • {booking['time']} - {booking['name']} ({booking['phone']})\n"
+        message_text += "\n"
+    
+    await callback.message.answer(message_text)
+    await callback.answer()
+
+# Добавление выходного дня
+@dp.callback_query(F.data == "admin_add_dayoff")
+async def admin_add_dayoff(callback: F.CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    await state.set_state(AdminStates.waiting_for_day_off_date)
+    await callback.message.answer(
+        "📅 Введите дату дополнительного выходного дня\n"
+        "Формат: ДД.ММ.ГГГГ (например, 01.01.2026)"
+    )
+    await callback.answer()
+
+@dp.message(AdminStates.waiting_for_day_off_date)
+async def process_day_off_date(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    
+    date_str = message.text.strip()
+    
+    # Проверяем формат даты
+    try:
+        datetime.strptime(date_str, "%d.%m.%Y")
+    except ValueError:
+        await message.answer("❌ Неверный формат даты. Используйте ДД.ММ.ГГГГ")
+        return
+    
+    extra_days_off.add(date_str)
+    save_schedule_settings()
+    
+    await message.answer(f"✅ Выходной день {date_str} добавлен!")
+    await state.clear()
+
+# Просмотр выходных дней
+@dp.callback_query(F.data == "admin_view_dayoffs")
+async def admin_view_dayoffs(callback: F.CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    if not extra_days_off:
+        await callback.message.answer("📅 Дополнительных выходных нет.")
+        await callback.answer()
+        return
+    
+    sorted_days = sorted(extra_days_off, key=lambda x: datetime.strptime(x, "%d.%m.%Y"))
+    
+    message_text = "📅 Дополнительные выходные дни:\n\n"
+    keyboard = []
+    
+    for day in sorted_days:
+        message_text += f"• {day}\n"
+        keyboard.append([InlineKeyboardButton(
+            text=f"❌ Удалить {day}",
+            callback_data=f"remove_dayoff_{day}"
+        )])
+    
+    await callback.message.answer(
+        message_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+    )
+    await callback.answer()
+
+# Удаление выходного дня
+@dp.callback_query(F.data.startswith("remove_dayoff_"))
+async def remove_dayoff(callback: F.CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    date_str = callback.data.replace("remove_dayoff_", "")
+    
+    if date_str in extra_days_off:
+        extra_days_off.remove(date_str)
+        save_schedule_settings()
+        await callback.message.answer(f"✅ Выходной день {date_str} удален!")
+    
+    await callback.answer()
+
+# Изменение графика на конкретный день
+@dp.callback_query(F.data == "admin_custom_schedule")
+async def admin_custom_schedule(callback: F.CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    await state.set_state(AdminStates.waiting_for_custom_schedule_date)
+    await callback.message.answer(
+        "🗓 Введите дату для изменения графика\n"
+        "Формат: ДД.ММ.ГГГГ (например, 25.12.2025)"
+    )
+    await callback.answer()
+
+@dp.message(AdminStates.waiting_for_custom_schedule_date)
+async def process_custom_schedule_date(message: Message, state: FSMContext):
+    if not is_admin(message.from_user.id):
+        return
+    
+    date_str = message.text.strip()
+    
+    try:
+        datetime.strptime(date_str, "%d.%m.%Y")
+    except ValueError:
+        await message.answer("❌ Неверный формат даты. Используйте ДД.ММ.ГГГГ")
+        return
+    
+    await state.update_data(custom_date=date_str)
+    await state.set_state(AdminStates.waiting_for_custom_schedule_time)
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Сделать выходным", callback_data="custom_dayoff")],
+        [InlineKeyboardButton(text="09:00-20:00 (весь день)", callback_data="custom_full")],
+        [InlineKeyboardButton(text="11:00-14:00 и 17:00-20:00", callback_data="custom_split")],
+        [InlineKeyboardButton(text="Отмена", callback_data="custom_cancel")]
+    ])
+    
+    await message.answer(
+        f"📅 Настройка графика на {date_str}\n\n"
+        "Выберите вариант работы:",
+        reply_markup=keyboard
+    )
+
+@dp.callback_query(F.data.startswith("custom_"))
+async def process_custom_schedule_type(callback: F.CallbackQuery, state: FSMContext):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    data = await state.get_data()
+    date_str = data.get('custom_date')
+    
+    action = callback.data.replace("custom_", "")
+    
+    if action == "cancel":
+        await state.clear()
+        await callback.message.answer("❌ Отменено")
+        await callback.answer()
+        return
+    
+    if action == "dayoff":
+        custom_schedule[date_str] = None
+    elif action == "full":
+        custom_schedule[date_str] = ["09:00", "20:00", None, None]
+    elif action == "split":
+        custom_schedule[date_str] = ["11:00", "14:00", "17:00", "20:00"]
+    
+    save_schedule_settings()
+    
+    await callback.message.answer(f"✅ График на {date_str} изменен!")
+    await state.clear()
+    await callback.answer()
+
+# Очистка старых записей
+@dp.callback_query(F.data == "admin_clear_old")
+async def admin_clear_old(callback: F.CallbackQuery):
+    if not is_admin(callback.from_user.id):
+        await callback.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    today = datetime.now().date()
+    old_bookings = []
+    
+    for key, booking in list(bookings.items()):
+        booking_date = datetime.strptime(booking['date'], "%d.%m.%Y").date()
+        if booking_date < today:
+            old_bookings.append(key)
+            del bookings[key]
+    
+    if old_bookings:
+        save_bookings()
+        await callback.message.answer(f"✅ Удалено {len(old_bookings)} старых записей")
+    else:
+        await callback.message.answer("📋 Старых записей нет")
+    
+    await callback.answer()
+
 # Запуск бота
 async def main():
     load_bookings()
+    load_schedule_settings()
     print("🤖 Бот запущен!")
     print(f"📋 Загружено записей: {len(bookings)}")
+    print(f"📅 Дополнительных выходных: {len(extra_days_off)}")
+    print(f"🗓 Кастомных расписаний: {len(custom_schedule)}")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
