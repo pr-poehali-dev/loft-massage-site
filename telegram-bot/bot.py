@@ -26,13 +26,13 @@ dp = Dispatcher(storage=storage)
 
 # График работы (день недели: [начало, конец, перерыв_начало, перерыв_конец])
 WORK_SCHEDULE = {
-    0: ["10:00", "20:00", "13:00", "14:00"],  # Понедельник
-    1: ["10:00", "20:00", "13:00", "14:00"],  # Вторник
-    2: ["10:00", "20:00", "13:00", "14:00"],  # Среда
-    3: ["10:00", "20:00", "13:00", "14:00"],  # Четверг
-    4: ["10:00", "20:00", "13:00", "14:00"],  # Пятница
-    5: ["10:00", "18:00", None, None],         # Суббота (без перерыва)
-    6: None  # Воскресенье - выходной
+    0: ["11:00", "14:00", "17:00", "20:00"],  # Понедельник (утро 11-14, вечер 17-20)
+    1: None,  # Вторник - выходной
+    2: ["11:00", "14:00", "17:00", "20:00"],  # Среда (утро 11-14, вечер 17-20)
+    3: None,  # Четверг - выходной
+    4: ["11:00", "14:00", "17:00", "20:00"],  # Пятница (утро 11-14, вечер 17-20)
+    5: ["09:00", "20:00", None, None],         # Суббота (без перерыва, 9-20)
+    6: ["09:00", "20:00", None, None]  # Воскресенье (без перерыва, 9-20)
 }
 
 # Длительность сеанса в минутах
@@ -68,30 +68,47 @@ def get_available_times(date_str: str):
     if WORK_SCHEDULE[weekday] is None:
         return []
     
-    work_start, work_end, break_start, break_end = WORK_SCHEDULE[weekday]
-    
-    # Генерируем все возможные слоты
+    schedule = WORK_SCHEDULE[weekday]
     available_slots = []
-    current_time = datetime.strptime(work_start, "%H:%M")
-    end_time = datetime.strptime(work_end, "%H:%M")
     
-    while current_time < end_time:
-        time_str = current_time.strftime("%H:%M")
+    # Для Пн, Ср, Пт: два рабочих окна (утро и вечер)
+    if weekday in [0, 2, 4]:
+        morning_start, morning_end, evening_start, evening_end = schedule
         
-        # Проверяем, не попадает ли слот в перерыв
-        if break_start and break_end:
-            break_start_dt = datetime.strptime(break_start, "%H:%M")
-            break_end_dt = datetime.strptime(break_end, "%H:%M")
-            if break_start_dt <= current_time < break_end_dt:
-                current_time += timedelta(minutes=SESSION_DURATION)
-                continue
+        # Утренние слоты (11:00-14:00)
+        current_time = datetime.strptime(morning_start, "%H:%M")
+        end_time = datetime.strptime(morning_end, "%H:%M")
         
-        # Проверяем, не занят ли слот
-        booking_key = f"{date_str}_{time_str}"
-        if booking_key not in bookings:
-            available_slots.append(time_str)
+        while current_time < end_time:
+            time_str = current_time.strftime("%H:%M")
+            booking_key = f"{date_str}_{time_str}"
+            if booking_key not in bookings:
+                available_slots.append(time_str)
+            current_time += timedelta(minutes=SESSION_DURATION)
         
-        current_time += timedelta(minutes=SESSION_DURATION)
+        # Вечерние слоты (17:00-20:00)
+        current_time = datetime.strptime(evening_start, "%H:%M")
+        end_time = datetime.strptime(evening_end, "%H:%M")
+        
+        while current_time < end_time:
+            time_str = current_time.strftime("%H:%M")
+            booking_key = f"{date_str}_{time_str}"
+            if booking_key not in bookings:
+                available_slots.append(time_str)
+            current_time += timedelta(minutes=SESSION_DURATION)
+    
+    # Для Сб, Вс: один длинный рабочий день (9:00-20:00)
+    else:
+        work_start, work_end = schedule[0], schedule[1]
+        current_time = datetime.strptime(work_start, "%H:%M")
+        end_time = datetime.strptime(work_end, "%H:%M")
+        
+        while current_time < end_time:
+            time_str = current_time.strftime("%H:%M")
+            booking_key = f"{date_str}_{time_str}"
+            if booking_key not in bookings:
+                available_slots.append(time_str)
+            current_time += timedelta(minutes=SESSION_DURATION)
     
     return available_slots
 
@@ -134,9 +151,9 @@ async def cmd_start(message: Message):
     await message.answer(
         "👋 Привет! Я бот для записи на массаж.\n\n"
         "📋 График работы:\n"
-        "Пн-Пт: 10:00-20:00 (перерыв 13:00-14:00)\n"
-        "Сб: 10:00-18:00\n"
-        "Вс: Выходной\n\n"
+        "Пн, Ср, Пт: 11:00-14:00 и 17:00-20:00\n"
+        "Сб, Вс: 09:00-20:00\n"
+        "Вт, Чт: Выходные\n\n"
         "⏱ Длительность сеанса: 60 минут\n\n"
         "Используйте команду /book для записи.",
         reply_markup=ReplyKeyboardRemove()
@@ -177,9 +194,9 @@ async def process_phone_contact(message: Message, state: FSMContext):
     await message.answer(
         "📅 Отлично! Теперь укажите желаемую дату записи.\n\n"
         "📋 График работы:\n"
-        "Пн-Пт: 10:00-20:00\n"
-        "Сб: 10:00-18:00\n"
-        "Вс: Выходной\n\n"
+        "Пн, Ср, Пт: 11:00-14:00 и 17:00-20:00\n"
+        "Сб, Вс: 09:00-20:00\n"
+        "Вт, Чт: Выходные\n\n"
         "Формат: ДД.ММ.ГГГГ (например, 25.10.2025)",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -191,9 +208,9 @@ async def process_phone_text(message: Message, state: FSMContext):
     await message.answer(
         "📅 Отлично! Теперь укажите желаемую дату записи.\n\n"
         "📋 График работы:\n"
-        "Пн-Пт: 10:00-20:00\n"
-        "Сб: 10:00-18:00\n"
-        "Вс: Выходной\n\n"
+        "Пн, Ср, Пт: 11:00-14:00 и 17:00-20:00\n"
+        "Сб, Вс: 09:00-20:00\n"
+        "Вт, Чт: Выходные\n\n"
         "Формат: ДД.ММ.ГГГГ (например, 25.10.2025)",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -221,9 +238,13 @@ async def process_date(message: Message, state: FSMContext):
     # Проверяем, работает ли массажист в этот день
     weekday = date_obj.weekday()
     if WORK_SCHEDULE[weekday] is None:
+        day_name = ["понедельник", "вторник", "среду", "четверг", "пятницу", "субботу", "воскресенье"][weekday]
         await message.answer(
-            "❌ К сожалению, в воскресенье не работаю.\n"
-            "Пожалуйста, выберите другой день."
+            f"❌ К сожалению, во {day_name} не работаю (выходной).\n"
+            "Пожалуйста, выберите другой день.\n\n"
+            "📋 Рабочие дни:\n"
+            "Пн, Ср, Пт: 11:00-14:00 и 17:00-20:00\n"
+            "Сб, Вс: 09:00-20:00"
         )
         return
     
