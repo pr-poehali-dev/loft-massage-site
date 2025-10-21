@@ -1,12 +1,13 @@
 import os
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+import json
 
 # Состояния для записи
 class BookingStates(StatesGroup):
@@ -23,24 +24,121 @@ bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
-# Клавиатура для времени
-def get_time_keyboard():
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="10:00"), KeyboardButton(text="12:00")],
-            [KeyboardButton(text="14:00"), KeyboardButton(text="16:00")],
-            [KeyboardButton(text="18:00"), KeyboardButton(text="20:00")]
-        ],
-        resize_keyboard=True
-    )
-    return keyboard
+# График работы (день недели: [начало, конец, перерыв_начало, перерыв_конец])
+WORK_SCHEDULE = {
+    0: ["10:00", "20:00", "13:00", "14:00"],  # Понедельник
+    1: ["10:00", "20:00", "13:00", "14:00"],  # Вторник
+    2: ["10:00", "20:00", "13:00", "14:00"],  # Среда
+    3: ["10:00", "20:00", "13:00", "14:00"],  # Четверг
+    4: ["10:00", "20:00", "13:00", "14:00"],  # Пятница
+    5: ["10:00", "18:00", None, None],         # Суббота (без перерыва)
+    6: None  # Воскресенье - выходной
+}
+
+# Длительность сеанса в минутах
+SESSION_DURATION = 60
+
+# Хранилище записей (в продакшене использовать БД)
+bookings = {}
+
+def load_bookings():
+    """Загрузка записей из файла"""
+    global bookings
+    try:
+        with open('bookings.json', 'r', encoding='utf-8') as f:
+            bookings = json.load(f)
+    except FileNotFoundError:
+        bookings = {}
+
+def save_bookings():
+    """Сохранение записей в файл"""
+    with open('bookings.json', 'w', encoding='utf-8') as f:
+        json.dump(bookings, f, ensure_ascii=False, indent=2)
+
+def get_available_times(date_str: str):
+    """Получить доступные слоты времени на выбранную дату"""
+    try:
+        date_obj = datetime.strptime(date_str, "%d.%m.%Y")
+    except ValueError:
+        return []
+    
+    weekday = date_obj.weekday()
+    
+    # Проверяем, работает ли массажист в этот день
+    if WORK_SCHEDULE[weekday] is None:
+        return []
+    
+    work_start, work_end, break_start, break_end = WORK_SCHEDULE[weekday]
+    
+    # Генерируем все возможные слоты
+    available_slots = []
+    current_time = datetime.strptime(work_start, "%H:%M")
+    end_time = datetime.strptime(work_end, "%H:%M")
+    
+    while current_time < end_time:
+        time_str = current_time.strftime("%H:%M")
+        
+        # Проверяем, не попадает ли слот в перерыв
+        if break_start and break_end:
+            break_start_dt = datetime.strptime(break_start, "%H:%M")
+            break_end_dt = datetime.strptime(break_end, "%H:%M")
+            if break_start_dt <= current_time < break_end_dt:
+                current_time += timedelta(minutes=SESSION_DURATION)
+                continue
+        
+        # Проверяем, не занят ли слот
+        booking_key = f"{date_str}_{time_str}"
+        if booking_key not in bookings:
+            available_slots.append(time_str)
+        
+        current_time += timedelta(minutes=SESSION_DURATION)
+    
+    return available_slots
+
+def is_date_available(date_str: str):
+    """Проверить, работает ли массажист в эту дату"""
+    try:
+        date_obj = datetime.strptime(date_str, "%d.%m.%Y")
+        
+        # Проверяем, что дата не в прошлом
+        if date_obj.date() < datetime.now().date():
+            return False
+        
+        weekday = date_obj.weekday()
+        return WORK_SCHEDULE[weekday] is not None
+    except ValueError:
+        return False
+
+def get_time_keyboard(available_times):
+    """Создать клавиатуру с доступными слотами"""
+    if not available_times:
+        return ReplyKeyboardRemove()
+    
+    # Разбиваем слоты по 3 в ряд
+    keyboard = []
+    row = []
+    for time in available_times:
+        row.append(KeyboardButton(text=time))
+        if len(row) == 3:
+            keyboard.append(row)
+            row = []
+    
+    if row:
+        keyboard.append(row)
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 # Команда /start
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
         "👋 Привет! Я бот для записи на массаж.\n\n"
-        "Используйте команду /book для записи на сеанс.",
+        "📋 График работы:\n"
+        "Пн-Пт: 10:00-20:00 (перерыв 13:00-14:00)\n"
+        "Сб: 10:00-18:00\n"
+        "Вс: Выходной\n\n"
+        "⏱ Длительность сеанса: 60 минут\n\n"
+        "Используйте команду /book для записи.",
         reply_markup=ReplyKeyboardRemove()
     )
 
@@ -77,7 +175,11 @@ async def process_phone_contact(message: Message, state: FSMContext):
     await state.update_data(phone=message.contact.phone_number)
     await state.set_state(BookingStates.waiting_for_date)
     await message.answer(
-        "Отлично! Теперь укажите желаемую дату записи.\n"
+        "📅 Отлично! Теперь укажите желаемую дату записи.\n\n"
+        "📋 График работы:\n"
+        "Пн-Пт: 10:00-20:00\n"
+        "Сб: 10:00-18:00\n"
+        "Вс: Выходной\n\n"
         "Формат: ДД.ММ.ГГГГ (например, 25.10.2025)",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -87,7 +189,11 @@ async def process_phone_text(message: Message, state: FSMContext):
     await state.update_data(phone=message.text)
     await state.set_state(BookingStates.waiting_for_date)
     await message.answer(
-        "Отлично! Теперь укажите желаемую дату записи.\n"
+        "📅 Отлично! Теперь укажите желаемую дату записи.\n\n"
+        "📋 График работы:\n"
+        "Пн-Пт: 10:00-20:00\n"
+        "Сб: 10:00-18:00\n"
+        "Вс: Выходной\n\n"
         "Формат: ДД.ММ.ГГГГ (например, 25.10.2025)",
         reply_markup=ReplyKeyboardRemove()
     )
@@ -95,37 +201,94 @@ async def process_phone_text(message: Message, state: FSMContext):
 # Получение даты
 @dp.message(BookingStates.waiting_for_date)
 async def process_date(message: Message, state: FSMContext):
+    date_str = message.text.strip()
+    
+    # Проверяем формат даты
     try:
-        # Проверяем формат даты
-        date_obj = datetime.strptime(message.text, "%d.%m.%Y")
-        await state.update_data(date=message.text)
-        await state.set_state(BookingStates.waiting_for_time)
-        await message.answer(
-            "Выберите удобное время:",
-            reply_markup=get_time_keyboard()
-        )
+        date_obj = datetime.strptime(date_str, "%d.%m.%Y")
     except ValueError:
         await message.answer(
             "❌ Неверный формат даты. Используйте формат ДД.ММ.ГГГГ\n"
             "Например: 25.10.2025"
         )
+        return
+    
+    # Проверяем, что дата не в прошлом
+    if date_obj.date() < datetime.now().date():
+        await message.answer("❌ Нельзя записаться на прошедшую дату. Выберите другую дату.")
+        return
+    
+    # Проверяем, работает ли массажист в этот день
+    weekday = date_obj.weekday()
+    if WORK_SCHEDULE[weekday] is None:
+        await message.answer(
+            "❌ К сожалению, в воскресенье не работаю.\n"
+            "Пожалуйста, выберите другой день."
+        )
+        return
+    
+    # Получаем доступные слоты
+    available_times = get_available_times(date_str)
+    
+    if not available_times:
+        await message.answer(
+            f"❌ К сожалению, на {date_str} все слоты заняты.\n"
+            "Попробуйте выбрать другую дату."
+        )
+        return
+    
+    await state.update_data(date=date_str)
+    await state.set_state(BookingStates.waiting_for_time)
+    
+    day_name = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"][weekday]
+    
+    await message.answer(
+        f"📅 {day_name}, {date_str}\n\n"
+        f"🕐 Доступные слоты ({len(available_times)}):\n"
+        "Выберите удобное время:",
+        reply_markup=get_time_keyboard(available_times)
+    )
 
 # Получение времени и завершение записи
 @dp.message(BookingStates.waiting_for_time)
 async def process_time(message: Message, state: FSMContext):
-    await state.update_data(time=message.text)
-    
-    # Получаем все данные
+    time_str = message.text.strip()
     data = await state.get_data()
+    date_str = data['date']
+    
+    # Проверяем, что выбранное время доступно
+    available_times = get_available_times(date_str)
+    if time_str not in available_times:
+        await message.answer(
+            "❌ Это время уже занято или недоступно.\n"
+            "Выберите другое время из предложенных."
+        )
+        return
+    
+    await state.update_data(time=time_str)
+    
+    # Сохраняем запись
+    booking_key = f"{date_str}_{time_str}"
+    bookings[booking_key] = {
+        "name": data['name'],
+        "phone": data['phone'],
+        "date": date_str,
+        "time": time_str,
+        "user_id": message.from_user.id,
+        "username": message.from_user.username
+    }
+    save_bookings()
     
     # Формируем сообщение для пользователя
     confirmation = (
-        "✅ Ваша запись принята!\n\n"
+        "✅ Ваша запись успешно создана!\n\n"
         f"👤 Имя: {data['name']}\n"
         f"📱 Телефон: {data['phone']}\n"
-        f"📅 Дата: {data['date']}\n"
-        f"🕐 Время: {data['time']}\n\n"
-        "Скоро с вами свяжется мастер для подтверждения."
+        f"📅 Дата: {date_str}\n"
+        f"🕐 Время: {time_str}\n"
+        f"⏱ Длительность: 60 минут\n\n"
+        "📍 Жду вас! Скоро свяжусь для подтверждения.\n\n"
+        "Для отмены записи используйте /myBookings"
     )
     
     # Отправляем подтверждение клиенту
@@ -136,9 +299,10 @@ async def process_time(message: Message, state: FSMContext):
         "🔔 Новая запись на массаж!\n\n"
         f"👤 Имя: {data['name']}\n"
         f"📱 Телефон: {data['phone']}\n"
-        f"📅 Дата: {data['date']}\n"
-        f"🕐 Время: {data['time']}\n"
-        f"👨‍💼 Telegram: @{message.from_user.username or 'Не указан'}"
+        f"📅 Дата: {date_str}\n"
+        f"🕐 Время: {time_str}\n"
+        f"👨‍💼 Telegram: @{message.from_user.username or 'Не указан'}\n"
+        f"🆔 ID: {message.from_user.id}"
     )
     
     if ADMIN_CHAT_ID:
@@ -147,19 +311,93 @@ async def process_time(message: Message, state: FSMContext):
     # Очищаем состояние
     await state.clear()
 
-# Команда /cancel - отмена записи
+# Команда для просмотра своих записей
+@dp.message(Command("myBookings"))
+async def cmd_my_bookings(message: Message):
+    user_id = message.from_user.id
+    user_bookings = []
+    
+    for key, booking in bookings.items():
+        if booking['user_id'] == user_id:
+            # Проверяем, что запись не в прошлом
+            booking_datetime = datetime.strptime(f"{booking['date']} {booking['time']}", "%d.%m.%Y %H:%M")
+            if booking_datetime >= datetime.now():
+                user_bookings.append((key, booking))
+    
+    if not user_bookings:
+        await message.answer("У вас нет активных записей.")
+        return
+    
+    # Формируем сообщение со списком записей
+    message_text = "📋 Ваши записи:\n\n"
+    
+    for key, booking in user_bookings:
+        message_text += (
+            f"📅 {booking['date']} в {booking['time']}\n"
+            f"👤 {booking['name']}\n\n"
+        )
+    
+    # Создаем кнопки для отмены
+    keyboard = []
+    for key, booking in user_bookings:
+        keyboard.append([InlineKeyboardButton(
+            text=f"❌ Отменить {booking['date']} {booking['time']}",
+            callback_data=f"cancel_{key}"
+        )])
+    
+    await message.answer(
+        message_text,
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard)
+    )
+
+# Обработка отмены записи
+@dp.callback_query(F.data.startswith("cancel_"))
+async def process_cancel(callback: F.CallbackQuery):
+    booking_key = callback.data.replace("cancel_", "")
+    
+    if booking_key in bookings:
+        booking = bookings[booking_key]
+        
+        # Проверяем, что это запись текущего пользователя
+        if booking['user_id'] == callback.from_user.id:
+            del bookings[booking_key]
+            save_bookings()
+            
+            await callback.message.answer(
+                f"✅ Запись на {booking['date']} в {booking['time']} отменена."
+            )
+            
+            # Уведомляем админа
+            if ADMIN_CHAT_ID:
+                await bot.send_message(
+                    ADMIN_CHAT_ID,
+                    f"❌ Запись отменена клиентом:\n"
+                    f"📅 {booking['date']} {booking['time']}\n"
+                    f"👤 {booking['name']}\n"
+                    f"📱 {booking['phone']}"
+                )
+        else:
+            await callback.answer("Это не ваша запись!", show_alert=True)
+    else:
+        await callback.answer("Запись уже отменена.", show_alert=True)
+    
+    await callback.answer()
+
+# Команда /cancel - отмена текущей записи
 @dp.message(Command("cancel"))
 async def cmd_cancel(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(
-        "❌ Запись отменена.\n"
+        "❌ Процесс записи отменен.\n"
         "Используйте /book для новой записи.",
         reply_markup=ReplyKeyboardRemove()
     )
 
 # Запуск бота
 async def main():
+    load_bookings()
     print("🤖 Бот запущен!")
+    print(f"📋 Загружено записей: {len(bookings)}")
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
