@@ -122,14 +122,14 @@ export default function BookingModal({
                   const times = []
                   if (isWorkDay) {
                     for (let h = 11; h < 14; h++) {
-                      times.push(`${h}:00`, `${h}:30`)
+                      times.push(`${h}:00`)
                     }
                     for (let h = 17; h < 20; h++) {
-                      times.push(`${h}:00`, `${h}:30`)
+                      times.push(`${h}:00`)
                     }
                   } else {
                     for (let h = 9; h < 20; h++) {
-                      times.push(`${h}:00`, `${h}:30`)
+                      times.push(`${h}:00`)
                     }
                   }
                   
