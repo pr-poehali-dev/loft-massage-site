@@ -3,7 +3,7 @@ export default function Footer() {
     <footer className="bg-industrial text-white py-8">
       <div className="container mx-auto px-4 text-center">
         <p className="text-lg mb-2">Массаж Булат © 2025</p>
-        <p className="text-white/70">Профессиональный массаж в стиле лофт</p>
+        <p className="text-white/70">Профессиональный массажист из Ижевска</p>
       </div>
     </footer>
   )
