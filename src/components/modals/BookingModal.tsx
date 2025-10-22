@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Icon from '@/components/ui/icon'
+import { useState, useEffect } from 'react'
 
 interface Service {
   title: string
@@ -42,6 +43,37 @@ export default function BookingModal({
   setCustomerPhone,
   onConfirmBooking
 }: BookingModalProps) {
+  const [bookedSlots, setBookedSlots] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (selectedDate) {
+      fetchBookedSlots()
+    }
+  }, [selectedDate])
+
+  const fetchBookedSlots = async () => {
+    if (!selectedDate) return
+    
+    setLoading(true)
+    try {
+      const dateStr = selectedDate.toISOString().split('T')[0]
+      const response = await fetch(`https://functions.poehali.dev/44725468-4f39-4361-bc48-b76fb53f5e04?date=${dateStr}`)
+      const bookings = await response.json()
+      
+      const slots = bookings
+        .filter((b: any) => b.status === 'active')
+        .map((b: any) => b.booking_time)
+      
+      setBookedSlots(slots)
+    } catch (error) {
+      console.error('Failed to fetch bookings:', error)
+      setBookedSlots([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!show) return null
 
   return (
@@ -133,19 +165,26 @@ export default function BookingModal({
                     }
                   }
                   
-                  return times.map(time => (
-                    <button
-                      key={time}
-                      onClick={() => setSelectedTime(time)}
-                      className={`p-3 rounded-lg border-2 transition-all ${
-                        selectedTime === time 
-                          ? 'border-industrial bg-industrial text-white' 
-                          : 'border-border hover:border-industrial/50'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))
+                  return times.map(time => {
+                    const isBooked = bookedSlots.includes(time)
+                    return (
+                      <button
+                        key={time}
+                        onClick={() => !isBooked && setSelectedTime(time)}
+                        disabled={isBooked}
+                        className={`p-3 rounded-lg border-2 transition-all ${
+                          isBooked
+                            ? 'border-border bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : selectedTime === time 
+                              ? 'border-industrial bg-industrial text-white' 
+                              : 'border-border hover:border-industrial/50'
+                        }`}
+                      >
+                        {time}
+                        {isBooked && <span className="text-xs block">занято</span>}
+                      </button>
+                    )
+                  })
                 })()}
               </div>
             </div>
