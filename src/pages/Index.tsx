@@ -52,7 +52,8 @@ export default function Index() {
     'https://cdn.poehali.dev/files/ca89434b-6670-4b10-9942-f9b1f36a7f7a.jpeg',
     'https://cdn.poehali.dev/files/73991933-3d6d-476a-be3e-da7f0c43bc38.jpeg',
     'https://cdn.poehali.dev/files/66350afb-c5f2-4d92-b705-7bdc846b7714.jpeg',
-    'https://cdn.poehali.dev/files/bfabeb17-fe5a-4a57-8306-df33558f9ec1.jpeg'
+    'https://cdn.poehali.dev/files/bfabeb17-fe5a-4a57-8306-df33558f9ec1.jpeg',
+    'https://cdn.poehali.dev/files/9e090f0d-f173-4d94-802f-8093a2423def.jpeg'
   ]
 
   const handleServiceSelect = (serviceTitle: string) => {
