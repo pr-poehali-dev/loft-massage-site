@@ -119,7 +119,7 @@ def get_available_times(date_str: str, service_duration: int = 60):
     if weekday in [0, 2, 4]:
         morning_start, morning_end, evening_start, evening_end = schedule
         
-        # Утренние слоты (11:00-14:00)
+        # Утренние слоты (11:00-14:00) - только полные часы
         current_time = datetime.strptime(morning_start, "%H:%M")
         end_time = datetime.strptime(morning_end, "%H:%M")
         
@@ -127,9 +127,9 @@ def get_available_times(date_str: str, service_duration: int = 60):
             time_str = current_time.strftime("%H:%M")
             if is_slot_available(date_str, time_str, service_duration):
                 available_slots.append(time_str)
-            current_time += timedelta(minutes=service_duration)
+            current_time += timedelta(hours=1)
         
-        # Вечерние слоты (17:00-20:00)
+        # Вечерние слоты (17:00-20:00) - только полные часы
         current_time = datetime.strptime(evening_start, "%H:%M")
         end_time = datetime.strptime(evening_end, "%H:%M")
         
@@ -137,9 +137,9 @@ def get_available_times(date_str: str, service_duration: int = 60):
             time_str = current_time.strftime("%H:%M")
             if is_slot_available(date_str, time_str, service_duration):
                 available_slots.append(time_str)
-            current_time += timedelta(minutes=service_duration)
+            current_time += timedelta(hours=1)
     
-    # Для Сб, Вс: один длинный рабочий день (9:00-20:00)
+    # Для Сб, Вс: один длинный рабочий день (9:00-20:00) - только полные часы
     else:
         work_start, work_end = schedule[0], schedule[1]
         current_time = datetime.strptime(work_start, "%H:%M")
@@ -149,7 +149,7 @@ def get_available_times(date_str: str, service_duration: int = 60):
             time_str = current_time.strftime("%H:%M")
             if is_slot_available(date_str, time_str, service_duration):
                 available_slots.append(time_str)
-            current_time += timedelta(minutes=service_duration)
+            current_time += timedelta(hours=1)
     
     return available_slots
 
