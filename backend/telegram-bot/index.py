@@ -11,6 +11,8 @@ from datetime import datetime, timedelta
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+user_states = {}
+
 def send_telegram_message(chat_id: str, text: str, reply_markup: Optional[Dict] = None) -> None:
     """Send message via Telegram Bot API"""
     import urllib.request
@@ -47,12 +49,18 @@ def get_db_connection():
         raise ValueError('DATABASE_URL not set')
     return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
 
-def get_available_slots(selected_date: str) -> list:
-    """Get available time slots for a given date"""
-    all_slots = [
-        "10:00", "11:00", "12:00", "13:00", "14:00", 
-        "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"
-    ]
+def get_available_times(date_str: str) -> list:
+    """Get available time slots for a given date based on schedule"""
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+    day_of_week = date_obj.weekday()
+    
+    if day_of_week in [1, 3]:
+        return []
+    
+    if day_of_week in [5, 6]:
+        times = [f"{h}:00" for h in range(9, 20)]
+    else:
+        times = [f"{h}:00" for h in range(11, 14)] + [f"{h}:00" for h in range(17, 20)]
     
     conn = get_db_connection()
     try:
@@ -60,10 +68,10 @@ def get_available_slots(selected_date: str) -> list:
             cur.execute(
                 "SELECT booking_time FROM t_p16986787_loft_massage_site.bookings "
                 "WHERE booking_date = %s AND status = 'active'",
-                (selected_date,)
+                (date_str,)
             )
-            booked_slots = [row['booking_time'] for row in cur.fetchall()]
-            return [slot for slot in all_slots if slot not in booked_slots]
+            booked = [row['booking_time'] for row in cur.fetchall()]
+            return [t for t in times if t not in booked]
     finally:
         conn.close()
 
@@ -80,6 +88,8 @@ def create_booking(service: str, date: str, time: str, name: str, phone: str) ->
             )
             booking_id = cur.fetchone()['id']
             conn.commit()
+            
+            notify_admin(booking_id, service, date, time, name, phone)
             return booking_id
     finally:
         conn.close()
@@ -133,6 +143,12 @@ def notify_admin(booking_id: int, service: str, date: str, time: str, name: str,
     
     send_telegram_message(admin_chat_id, message)
 
+def get_day_name(date_str: str) -> str:
+    """Get day name in Russian"""
+    days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+    return days[date_obj.weekday()]
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Telegram bot webhook handler
@@ -174,9 +190,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         message = update['message']
         chat_id = str(message['chat']['id'])
         text = message.get('text', '')
-        user_data = {}
         
-        if text == '/start':
+        if chat_id not in user_states:
+            user_states[chat_id] = {}
+        
+        state = user_states[chat_id]
+        
+        if text == '/start' or text == '↩️ Назад':
+            user_states[chat_id] = {}
             keyboard = {
                 'keyboard': [
                     [{'text': '📅 Записаться на массаж'}],
@@ -186,12 +207,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             }
             send_telegram_message(
                 chat_id,
-                "👋 Добро пожаловать в Loft Massage!\n\n"
-                "Выберите действие:",
+                "👋 Добро пожаловать в Loft Massage!\n\nВыберите действие:",
                 keyboard
             )
         
         elif text == '📅 Записаться на массаж':
+            user_states[chat_id] = {'step': 'choose_service'}
             keyboard = {
                 'keyboard': [
                     [{'text': 'Классический массаж спина'}],
@@ -202,34 +223,86 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 ],
                 'resize_keyboard': True
             }
-            send_telegram_message(
-                chat_id,
-                "Выберите тип массажа:",
-                keyboard
-            )
+            send_telegram_message(chat_id, "Выберите тип массажа:", keyboard)
         
-        elif text in ['Классический массаж спина', 'Успокаивающий массаж спина', 'Классический массаж тело', 'Расслабляющий массаж тела']:
-            user_data['service'] = text
+        elif state.get('step') == 'choose_service' and text in [
+            'Классический массаж спина', 
+            'Успокаивающий массаж спина', 
+            'Классический массаж тело', 
+            'Расслабляющий массаж тела'
+        ]:
+            user_states[chat_id]['service'] = text
+            user_states[chat_id]['step'] = 'choose_date'
+            
             today = datetime.now()
-            dates = [(today + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
+            dates = []
+            keyboard_rows = []
+            
+            for i in range(14):
+                check_date = today + timedelta(days=i)
+                date_str = check_date.strftime('%Y-%m-%d')
+                day_name = get_day_name(date_str)
+                
+                if check_date.weekday() not in [1, 3]:
+                    display = f"{day_name} {check_date.strftime('%d.%m')}"
+                    dates.append(date_str)
+                    keyboard_rows.append([{'text': display, 'callback_data': date_str}])
             
             keyboard = {
-                'keyboard': [[{'text': date}] for date in dates] + [[{'text': '↩️ Назад'}]],
+                'keyboard': keyboard_rows[:7] + [[{'text': '↩️ Назад'}]],
                 'resize_keyboard': True
             }
-            send_telegram_message(
-                chat_id,
-                f"Вы выбрали: {text}\n\nВыберите дату:",
-                keyboard
-            )
+            send_telegram_message(chat_id, f"Вы выбрали: {text}\n\nВыберите дату:", keyboard)
         
-        elif text == '📋 Мои записи':
-            send_telegram_message(
-                chat_id,
-                "Отправьте ваш номер телефона в формате +7XXXXXXXXXX"
-            )
+        elif state.get('step') == 'choose_date':
+            try:
+                parts = text.split()
+                if len(parts) >= 2:
+                    date_part = parts[1]
+                    day, month = date_part.split('.')
+                    year = datetime.now().year
+                    date_obj = datetime(year, int(month), int(day))
+                    date_str = date_obj.strftime('%Y-%m-%d')
+                    
+                    user_states[chat_id]['date'] = date_str
+                    user_states[chat_id]['step'] = 'choose_time'
+                    
+                    available_times = get_available_times(date_str)
+                    
+                    if not available_times:
+                        send_telegram_message(chat_id, "К сожалению, на эту дату нет свободных мест. Выберите другую дату.")
+                    else:
+                        keyboard = {
+                            'keyboard': [[{'text': t}] for t in available_times] + [[{'text': '↩️ Назад'}]],
+                            'resize_keyboard': True
+                        }
+                        send_telegram_message(chat_id, "Выберите время:", keyboard)
+            except:
+                send_telegram_message(chat_id, "Пожалуйста, выберите дату из предложенных вариантов")
         
-        elif text == '↩️ Назад':
+        elif state.get('step') == 'choose_time' and ':' in text:
+            user_states[chat_id]['time'] = text
+            user_states[chat_id]['step'] = 'enter_name'
+            
+            keyboard = {'remove_keyboard': True}
+            send_telegram_message(chat_id, "Введите ваше имя:", keyboard)
+        
+        elif state.get('step') == 'enter_name':
+            user_states[chat_id]['name'] = text
+            user_states[chat_id]['step'] = 'enter_phone'
+            send_telegram_message(chat_id, "Введите ваш номер телефона (например: +79001234567):")
+        
+        elif state.get('step') == 'enter_phone':
+            user_states[chat_id]['phone'] = text
+            
+            service = state['service']
+            date = state['date']
+            time = state['time']
+            name = state['name']
+            phone = text
+            
+            booking_id = create_booking(service, date, time, name, phone)
+            
             keyboard = {
                 'keyboard': [
                     [{'text': '📅 Записаться на массаж'}],
@@ -237,7 +310,56 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 ],
                 'resize_keyboard': True
             }
-            send_telegram_message(chat_id, "Главное меню:", keyboard)
+            
+            send_telegram_message(
+                chat_id,
+                f"✅ <b>Запись создана!</b>\n\n"
+                f"📋 ID: {booking_id}\n"
+                f"💆 Услуга: {service}\n"
+                f"📅 Дата: {date}\n"
+                f"🕐 Время: {time}\n"
+                f"👤 Имя: {name}\n"
+                f"📞 Телефон: {phone}",
+                keyboard
+            )
+            
+            user_states[chat_id] = {}
+        
+        elif text == '📋 Мои записи':
+            user_states[chat_id] = {'step': 'my_bookings'}
+            keyboard = {'remove_keyboard': True}
+            send_telegram_message(chat_id, "Отправьте ваш номер телефона:", keyboard)
+        
+        elif state.get('step') == 'my_bookings':
+            bookings = get_user_bookings(text)
+            
+            if not bookings:
+                keyboard = {
+                    'keyboard': [
+                        [{'text': '📅 Записаться на массаж'}],
+                        [{'text': '↩️ Назад'}]
+                    ],
+                    'resize_keyboard': True
+                }
+                send_telegram_message(chat_id, "У вас нет активных записей", keyboard)
+            else:
+                msg = "📋 <b>Ваши записи:</b>\n\n"
+                for b in bookings:
+                    msg += f"ID: {b['id']}\n"
+                    msg += f"💆 {b['service']}\n"
+                    msg += f"📅 {b['booking_date']}\n"
+                    msg += f"🕐 {b['booking_time']}\n\n"
+                
+                keyboard = {
+                    'keyboard': [
+                        [{'text': '📅 Записаться на массаж'}],
+                        [{'text': '↩️ Назад'}]
+                    ],
+                    'resize_keyboard': True
+                }
+                send_telegram_message(chat_id, msg, keyboard)
+            
+            user_states[chat_id] = {}
         
         return {
             'statusCode': 200,
