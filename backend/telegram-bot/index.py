@@ -117,13 +117,33 @@ def cancel_booking(booking_id: int) -> bool:
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE t_p16986787_loft_massage_site.bookings "
-                "SET status = 'cancelled' WHERE id = %s",
+                "SET status = 'cancelled' WHERE id = %s AND status = 'active'",
                 (booking_id,)
             )
             conn.commit()
-            return True
+            return cur.rowcount > 0
     finally:
         conn.close()
+
+def get_all_active_bookings() -> list:
+    """Get all active bookings (for admin)"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, service, booking_date, booking_time, customer_name, customer_phone "
+                "FROM t_p16986787_loft_massage_site.bookings "
+                "WHERE status = 'active' "
+                "ORDER BY booking_date, booking_time"
+            )
+            return cur.fetchall()
+    finally:
+        conn.close()
+
+def is_admin(chat_id: str) -> bool:
+    """Check if user is admin"""
+    admin_chat_id = os.environ.get('ADMIN_CHAT_ID')
+    return admin_chat_id and str(chat_id) == str(admin_chat_id)
 
 def notify_admin(booking_id: int, service: str, date: str, time: str, name: str, phone: str) -> None:
     """Send notification to admin about new booking"""
@@ -198,13 +218,25 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         if text == '/start' or text == '↩️ Назад':
             user_states[chat_id] = {}
-            keyboard = {
-                'keyboard': [
-                    [{'text': '📅 Записаться на массаж'}],
-                    [{'text': '📋 Мои записи'}]
-                ],
-                'resize_keyboard': True
-            }
+            
+            if is_admin(chat_id):
+                keyboard = {
+                    'keyboard': [
+                        [{'text': '📅 Записаться на массаж'}],
+                        [{'text': '📋 Мои записи'}],
+                        [{'text': '⚙️ Все записи (админ)'}, {'text': '❌ Отменить запись'}]
+                    ],
+                    'resize_keyboard': True
+                }
+            else:
+                keyboard = {
+                    'keyboard': [
+                        [{'text': '📅 Записаться на массаж'}],
+                        [{'text': '📋 Мои записи'}]
+                    ],
+                    'resize_keyboard': True
+                }
+            
             send_telegram_message(
                 chat_id,
                 "👋 Добро пожаловать в Loft Massage!\n\nВыберите действие:",
@@ -358,6 +390,48 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'resize_keyboard': True
                 }
                 send_telegram_message(chat_id, msg, keyboard)
+            
+            user_states[chat_id] = {}
+        
+        elif text == '⚙️ Все записи (админ)' and is_admin(chat_id):
+            bookings = get_all_active_bookings()
+            
+            if not bookings:
+                send_telegram_message(chat_id, "📋 Нет активных записей")
+            else:
+                msg = "📋 <b>Все активные записи:</b>\n\n"
+                for b in bookings:
+                    msg += f"🆔 ID: <b>{b['id']}</b>\n"
+                    msg += f"💆 {b['service']}\n"
+                    msg += f"📅 {b['booking_date']}\n"
+                    msg += f"🕐 {b['booking_time']}\n"
+                    msg += f"👤 {b['customer_name']}\n"
+                    msg += f"📞 {b['customer_phone']}\n\n"
+                
+                send_telegram_message(chat_id, msg)
+        
+        elif text == '❌ Отменить запись' and is_admin(chat_id):
+            user_states[chat_id] = {'step': 'admin_cancel'}
+            keyboard = {'remove_keyboard': True}
+            send_telegram_message(chat_id, "Введите ID записи для отмены:", keyboard)
+        
+        elif state.get('step') == 'admin_cancel' and is_admin(chat_id):
+            try:
+                booking_id = int(text)
+                if cancel_booking(booking_id):
+                    keyboard = {
+                        'keyboard': [
+                            [{'text': '📅 Записаться на массаж'}],
+                            [{'text': '📋 Мои записи'}],
+                            [{'text': '⚙️ Все записи (админ)'}, {'text': '❌ Отменить запись'}]
+                        ],
+                        'resize_keyboard': True
+                    }
+                    send_telegram_message(chat_id, f"✅ Запись #{booking_id} успешно отменена", keyboard)
+                else:
+                    send_telegram_message(chat_id, f"❌ Запись #{booking_id} не найдена или уже отменена")
+            except ValueError:
+                send_telegram_message(chat_id, "❌ Пожалуйста, введите корректный ID (число)")
             
             user_states[chat_id] = {}
         
