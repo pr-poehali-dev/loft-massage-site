@@ -148,6 +148,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400'
             },
+            'isBase64Encoded': False,
             'body': ''
         }
     
@@ -155,6 +156,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return {
             'statusCode': 405,
             'headers': {'Content-Type': 'application/json'},
+            'isBase64Encoded': False,
             'body': json.dumps({'error': 'Method not allowed'})
         }
     
@@ -162,7 +164,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         update = json.loads(event.get('body', '{}'))
         
         if 'message' not in update:
-            return {'statusCode': 200, 'body': 'ok'}
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json'},
+                'isBase64Encoded': False,
+                'body': json.dumps({'ok': True})
+            }
         
         message = update['message']
         chat_id = str(message['chat']['id'])
@@ -234,6 +241,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
+            'isBase64Encoded': False,
             'body': json.dumps({'ok': True})
         }
         
@@ -241,5 +249,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
+            'isBase64Encoded': False,
             'body': json.dumps({'ok': True})
         }
